@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockMaster Pro v8.26 | Enterprise Edition</title>
-    <link rel="stylesheet" href="style.css?v=8.26">
+    <title>StockMaster Pro v8.27 | Enterprise Edition</title>
+    <link rel="stylesheet" href="style.css?v=8.27">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="is-public">
@@ -60,6 +60,7 @@
             </div>
             
             <div class="auth-group">
+                <button id="btnTheme" class="btn-outline" style="margin-top: 0;" onclick="UI.toggleTheme()">🌙</button>
                 <button class="btn-outline" style="border-color: #2563eb; color: #2563eb; margin-top: 0; font-weight: bold; background: #eff6ff;" onclick="App.syncLoad()">Sync</button>
                 <button id="btnPushDrive" class="btn-outline private" style="display:none; border-color: #16a34a; color: #16a34a; margin-top: 0; font-weight: bold; background: #f0fdf4;" onclick="App.syncPush()">Push</button>
                 <button id="btnExportExcel" class="btn-export private" style="display:none" onclick="App.exportToExcel()">Export</button>
@@ -80,7 +81,12 @@
         
         <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayinTableBody"></tbody></table></div></div>
         <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayoutTableBody"></tbody></table></div></div>
-        <div id="tab-mutasi" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Pilih Bulan:</label><input type="month" id="f_mutasi_bulan" onchange="UI.refresh()"></div><div class="f-item"><label>Filter Produk:</label><input type="text" id="f_mutasi_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x" style="max-height: 70vh;"><table id="tableMutasi" class="table-pivot"><thead id="mutasiHeader"></thead><tbody id="mutasiTableBody"></tbody></table></div></div>
+        
+        <div id="tab-mutasi" class="tab-pane"><div class="card"><div class="form-row-compact">
+            <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
+            <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"></select></div>
+            <div class="f-item"><label>Filter Produk:</label><input type="text" id="f_mutasi_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
+        </div></div><div class="card overflow-x" style="max-height: 70vh;"><table id="tableMutasi" class="table-pivot"><thead id="mutasiHeader"></thead><tbody id="mutasiTableBody"></tbody></table></div></div>
         
         <div id="tab-batch" class="tab-pane">
             <div class="card"><div class="batch-filter-grid">
@@ -104,7 +110,7 @@
 
     <div id="modalLogin" class="modal"><div class="modal-content sz-mini"><h3>Akses</h3><select id="loginRole" onchange="UI.loginUX(this.value)"><option value="guest">Guest</option><option value="admin">Admin</option></select><div id="adminPassArea" style="display:none"><input type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter') Auth.login()"></div><button class="btn-primary" onclick="Auth.login()">Masuk</button><button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button></div></div>
     <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
-    <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: #fff; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan (Enter)</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
+    <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan (Enter)</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
     <div id="modalMaster" class="modal">
         <div class="modal-content sz-mini">
@@ -123,6 +129,6 @@
     
     <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.processImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
 
-    <script src="script.js?v=8.26"></script>
+    <script src="script.js?v=8.27"></script>
 </body>
 </html>

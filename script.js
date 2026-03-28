@@ -39,13 +39,12 @@ const Auth = {
     },
     applySession: (role) => {
         if(!role) return;
-        document.body.className = (role === 'admin') ? 'admin-mode' : 'guest-mode';
+        document.body.className = (role === 'admin' ? 'admin-mode' : 'guest-mode') + (localStorage.getItem('theme') === 'dark' ? ' dark-mode' : '');
         document.querySelectorAll('.private').forEach(el => el.style.display = 'block');
         
         if (role !== 'admin') { 
             const btnPush = document.getElementById('btnPushDrive'); if (btnPush) btnPush.style.display = 'none'; 
         } else {
-            // FITUR BARU: Auto-Minimize Sidebar saat Admin Login
             document.getElementById('sidebar').classList.add('mini');
         }
         
@@ -69,12 +68,23 @@ const Engine = {
 const UI = {
     sortCol: 'kode', sortAsc: true, currentFocus: -1, 
 
-    // FITUR BARU: Pembersihan Modal Login
+    // --- DARK MODE TOGGLE (HANYA IKON) ---
+    toggleTheme: () => {
+        const btn = document.getElementById('btnTheme');
+        if (document.body.classList.contains('dark-mode')) {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+            if (btn) btn.innerText = '🌙';
+        } else {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+            if (btn) btn.innerText = '☀️';
+        }
+    },
+
     openLogin: () => {
-        document.getElementById('loginRole').value = 'guest';
-        document.getElementById('adminPass').value = '';
-        UI.loginUX('guest'); 
-        UI.showModal('modalLogin');
+        document.getElementById('loginRole').value = 'guest'; document.getElementById('adminPass').value = '';
+        UI.loginUX('guest'); UI.showModal('modalLogin');
     },
 
     formatDateInput: (el) => {
@@ -122,8 +132,7 @@ const UI = {
 
         if(val === '') {
             if (['k', 'n'].includes(type)) {
-                if (type === 'k') document.getElementById('t_n').value = '';
-                if (type === 'n') document.getElementById('t_k').value = '';
+                if (type === 'k') document.getElementById('t_n').value = ''; if (type === 'n') document.getElementById('t_k').value = '';
                 if(document.getElementById('t_stk_tot')) document.getElementById('t_stk_tot').value = '';
                 if(document.getElementById('t_b_sel')) document.getElementById('t_b_sel').innerHTML = '<option value="">--Pilih Kode Dulu--</option>';
                 if(document.getElementById('t_stk_b')) document.getElementById('t_stk_b').value = '';
@@ -152,10 +161,7 @@ const UI = {
 
         if (e.key === 'ArrowDown') { e.preventDefault(); UI.currentFocus++; UI.addActive(items); } 
         else if (e.key === 'ArrowUp') { e.preventDefault(); UI.currentFocus--; UI.addActive(items); } 
-        else if (e.key === 'Enter' || e.key === 'Tab') {
-            e.preventDefault();
-            if (UI.currentFocus > -1) { items[UI.currentFocus].click(); } else if (items.length > 0) { items[0].click(); } 
-        }
+        else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (UI.currentFocus > -1) { items[UI.currentFocus].click(); } else if (items.length > 0) { items[0].click(); } }
     },
     
     addActive: (items) => {
@@ -231,8 +237,8 @@ const UI = {
             const threshold = masaSimpan * 0.5;
             if (diffDays <= threshold) {
                 let statusTxt = ""; let rowClass = "";
-                if (diffDays < 0) { statusTxt = `<span style="color:red; font-weight:bold;">Telah Kadaluarsa! (${Math.abs(diffDays)} hari lewat)</span>`; rowClass = "background-color: #fef2f2;"; } 
-                else { statusTxt = `<span style="color:#d97706; font-weight:bold;">Mendekati Expired (Sisa ${diffDays} hari)</span>`; rowClass = "background-color: #fffbeb;"; }
+                if (diffDays < 0) { statusTxt = `<span style="color:red; font-weight:bold;">Telah Kadaluarsa! (${Math.abs(diffDays)} hari lewat)</span>`; rowClass = "background-color: var(--bg-out);"; } 
+                else { statusTxt = `<span style="color:#d97706; font-weight:bold;">Mendekati Expired (Sisa ${diffDays} hari)</span>`; rowClass = "background-color: var(--bg-awal);"; }
                 htmlContent += `<tr style="${rowClass}"><td><b>${b.kode}</b></td><td>${m.nama}</td><td>📦 ${b.batch}</td><td class="txt-m">${b.stok}</td><td><b>${DateHelper.toUI(b.exp)}</b></td><td>${masaSimpan} hari</td><td>${statusTxt}</td></tr>`;
             }
         });
@@ -248,12 +254,22 @@ const UI = {
         const filtered = l.filter(x => x.tgl === tglFilter && x.tipe === tipe && (x.kode.includes(searchVal) || ((ms.find(m=>m.kode===x.kode)||{}).nama||'').toUpperCase().includes(searchVal)));
         document.getElementById(`${id.replace('-','')}TableBody`).innerHTML = filtered.reverse().map(x => { const m = ms.find(i => i.kode === x.kode); return `<tr class="${x.v ? 'is-verified' : ''}"><td>${x.ref}</td><td><b>${x.kode}</b></td><td>${m ? m.nama : ''}</td><td>${x.batch}</td><td>${x.qty}</td><td>${x.ket || '-'}</td><td align="center"><input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify(${l.indexOf(x)})"></td></tr>`; }).join('');
     },
+    
     renderMutasiPivot: (ms, l) => {
-        const bul = document.getElementById('f_mutasi_bulan').value; if(!bul) return;
-        const [y, m] = bul.split('-').map(Number), days = new Date(y, m, 0).getDate(); const q = document.getElementById('f_mutasi_q').value.toUpperCase();
-        let h1 = `<tr><th rowspan="2" class="sticky-col k-kode">Kode</th><th rowspan="2" class="sticky-col k-nama">Nama Barang</th><th rowspan="2" style="background:#fffde7">Awal</th>`; let h2 = `<tr>`;
-        for(let i=1; i<=days; i++) { h1 += `<th colspan="2" class="day-header">${i}</th>`; h2 += `<th class="sub-col">M</th><th class="sub-col">K</th>`; }
-        h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" style="background:#e8f5e9">Akhir</th></tr>`; document.getElementById('mutasiHeader').innerHTML = h1 + h2 + `</tr>`;
+        const selM = document.getElementById('f_mutasi_m'); const selY = document.getElementById('f_mutasi_y');
+        if(!selM || !selY) return;
+        
+        const m = parseInt(selM.value); const y = parseInt(selY.value); if(!m || !y) return;
+        const days = new Date(y, m, 0).getDate(); const q = document.getElementById('f_mutasi_q').value.toUpperCase();
+        
+        let h1 = `<tr><th rowspan="2" class="sticky-col k-kode">Kode</th><th rowspan="2" class="sticky-col k-nama">Nama Barang</th><th rowspan="2" style="background-color: var(--bg-awal);">Awal</th>`; let h2 = `<tr>`;
+        for(let i=1; i<=days; i++) { 
+            h1 += `<th colspan="2" class="day-header">${i}</th>`; 
+            h2 += `<th class="sub-col" style="background-color: var(--bg-in);">M</th><th class="sub-col" style="background-color: var(--bg-out);">K</th>`; 
+        }
+        h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" style="background-color: var(--bg-akhir);">Akhir</th></tr>`; 
+        document.getElementById('mutasiHeader').innerHTML = h1 + h2 + `</tr>`;
+        
         document.getElementById('mutasiTableBody').innerHTML = ms.filter(m_ => (m_.kode||'').includes(q) || (m_.nama||'').toUpperCase().includes(q)).map(it => {
             let aw = 0, ti = 0, to = 0, dM = Array(days+1).fill(0), dK = Array(days+1).fill(0);
             l.filter(x => x.kode === it.kode).forEach(log => {
@@ -261,11 +277,14 @@ const UI = {
                 if (ly < y || (ly === y && lm < m)) log.tipe === 'IN' ? aw += log.qty : aw -= log.qty;
                 else if (ly === y && lm === m) { const day = ld.getDate(); if(log.tipe === 'IN') { dM[day] += log.qty; ti += log.qty; } else { dK[day] += log.qty; to += log.qty; } }
             });
-            let row = `<tr><td class="sticky-col k-kode">${it.kode}</td><td class="sticky-col k-nama">${it.nama}</td><td style="background:#fffde7">${aw}</td>`;
-            for(let i=1; i<=days; i++) row += `<td class="sub-col txt-m">${dM[i]||''}</td><td class="sub-col txt-k">${dK[i]||''}</td>`;
-            return row + `<td>${ti}</td><td>${to}</td><td style="background:#e8f5e9">${aw+ti-to}</td></tr>`;
+            let row = `<tr><td class="sticky-col k-kode">${it.kode}</td><td class="sticky-col k-nama">${it.nama}</td><td style="background-color: var(--bg-awal);">${aw}</td>`;
+            for(let i=1; i<=days; i++) {
+                row += `<td class="sub-col txt-m" style="background-color: var(--bg-in);">${dM[i]||''}</td><td class="sub-col txt-k" style="background-color: var(--bg-out);">${dK[i]||''}</td>`;
+            }
+            return row + `<td>${ti}</td><td>${to}</td><td style="background-color: var(--bg-akhir);">${aw+ti-to}</td></tr>`;
         }).join('');
     },
+
     renderBatch: (ms, act) => {
         const qK = document.getElementById('b_f_kode').value.toUpperCase(); const qN = document.getElementById('b_f_nama').value.toUpperCase(); let ttlS = 0; 
         const filteredMs = ms.filter(m => (qK ? m.kode === qK : true) && (qN ? m.nama === qN : true)); let htmlContent = '';
@@ -359,8 +378,11 @@ const UI = {
 
 const App = {
     pendingTrx: null, driveURL: "https://script.google.com/macros/s/AKfycbwV_EsebWHPkoRH6DBngsumFc4GT90Tdhk1TU1B4KDLP4QQilHS2whhrwgqbABjdgH0/exec", 
-    syncLoad: async () => { const btn = document.querySelector('button[onclick="App.syncLoad()"]'); const origText = btn.innerText; btn.innerText = "🔄 Menarik..."; btn.disabled = true; try { const response = await fetch(App.driveURL); const data = await response.json(); if(data) { DB.set('m', data.m || []); DB.set('l', data.l || []); UI.refresh(); alert("✅ Sinkronisasi Berhasil!\nData terbaru dimuat."); } } catch (error) { console.error(error); alert("❌ Gagal menarik data."); } finally { btn.innerText = origText; btn.disabled = false; } },
-    syncPush: async () => { const btn = document.getElementById('btnPushDrive'); const origText = btn.innerText; btn.innerText = "☁️ Mengirim..."; btn.disabled = true; const dataToSave = { m: DB.get('m') || [], l: DB.get('l') || [] }; try { const response = await fetch(App.driveURL, { method: "POST", body: JSON.stringify(dataToSave) }); const result = await response.json(); if(result.status === 'sukses') { alert("✅ Push Berhasil!\nData disimpan ke Google Drive."); } } catch (error) { console.error(error); alert("❌ Gagal mengirim data."); } finally { btn.innerText = origText; btn.disabled = false; } },
+    
+    // MENGHAPUS EMOTICON SAAT LOADING
+    syncLoad: async () => { const btn = document.querySelector('button[onclick="App.syncLoad()"]'); const origText = btn.innerText; btn.innerText = "Menarik..."; btn.disabled = true; try { const response = await fetch(App.driveURL); const data = await response.json(); if(data) { DB.set('m', data.m || []); DB.set('l', data.l || []); UI.refresh(); alert("✅ Sinkronisasi Berhasil!\nData terbaru dimuat."); } } catch (error) { console.error(error); alert("❌ Gagal menarik data."); } finally { btn.innerText = origText; btn.disabled = false; } },
+    syncPush: async () => { const btn = document.getElementById('btnPushDrive'); const origText = btn.innerText; btn.innerText = "Mengirim..."; btn.disabled = true; const dataToSave = { m: DB.get('m') || [], l: DB.get('l') || [] }; try { const response = await fetch(App.driveURL, { method: "POST", body: JSON.stringify(dataToSave) }); const result = await response.json(); if(result.status === 'sukses') { alert("✅ Push Berhasil!\nData disimpan ke Google Drive."); } } catch (error) { console.error(error); alert("❌ Gagal mengirim data."); } finally { btn.innerText = origText; btn.disabled = false; } },
+    
     exportDB: () => { const data = { m: DB.get('m'), l: DB.get('l') }; const b = new Blob([JSON.stringify(data)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Backup_StockMaster_${new Date().getTime()}.json`; a.click(); },
     importDB: (input) => { const r = new FileReader(); r.onload = (e) => { const d = JSON.parse(e.target.result); DB.set('m', d.m); DB.set('l', d.l); alert("Database Lokal Berhasil Dimuat!"); UI.refresh(); }; r.readAsText(input.files[0]); },
     resetLog: () => { if(confirm("Hapus seluruh log lokal?")) { DB.set('l', []); UI.refresh(); } },
@@ -488,12 +510,30 @@ window.onload = () => {
     const pObj = new Date(); pObj.setDate(pObj.getDate() - 30); pObj.setMinutes(pObj.getMinutes() - pObj.getTimezoneOffset()); 
     const past30 = pObj.toISOString().split('T')[0];
     
+    // SETUP THEME (TAMPILKAN IKON SAJA)
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        const btnTheme = document.getElementById('btnTheme');
+        if(btnTheme) btnTheme.innerText = '☀️';
+    }
+
+    // SETUP PIVOT YEAR DROPDOWN
+    const selY = document.getElementById('f_mutasi_y');
+    if(selY) {
+        let currentYear = tObj.getFullYear();
+        for(let i = currentYear - 2; i <= currentYear + 3; i++) {
+            selY.innerHTML += `<option value="${i}">${i}</option>`;
+        }
+        selY.value = currentYear;
+    }
+    const selM = document.getElementById('f_mutasi_m');
+    if(selM) selM.value = tObj.getMonth() + 1;
+
     const todayUI = DateHelper.toUI(today);
     const past30UI = DateHelper.toUI(past30);
 
     if(document.getElementById('f_day_in_tgl')) document.getElementById('f_day_in_tgl').value = todayUI; 
     if(document.getElementById('f_day_out_tgl')) document.getElementById('f_day_out_tgl').value = todayUI; 
-    if(document.getElementById('f_mutasi_bulan')) document.getElementById('f_mutasi_bulan').value = today.substring(0, 7); 
     if(document.getElementById('f_tgl_1')) document.getElementById('f_tgl_1').value = past30UI; 
     if(document.getElementById('f_tgl_2')) document.getElementById('f_tgl_2').value = todayUI;
     

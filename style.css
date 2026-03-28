@@ -13,7 +13,7 @@ body.admin-mode .sidebar { display: flex; }
 .nav-item .icon { font-size: 14px; transition: font-size 0.3s ease, margin 0.3s ease; display: flex; justify-content: center; width: 24px; }
 .nav-text { transition: opacity 0.2s ease; opacity: 1; }
 .nav-divider { border: 0; border-top: 1px solid #334155; margin: 10px 0; }
-.sidebar.mini { width: 65px; }
+.sidebar.mini { width: 55px; }
 .sidebar.mini .sidebar-header { justify-content: center; padding: 12px 0; }
 .sidebar.mini .logo-txt { display: none; opacity: 0; }
 .sidebar.mini .nav-text { display: none; opacity: 0; }
@@ -22,7 +22,7 @@ body.admin-mode .sidebar { display: flex; }
 
 /* MAIN LAYOUT */
 #main-content { flex: 1; padding: 15px; min-width: 0; display: flex; flex-direction: column; transition: all 0.3s ease; }
-.top-nav-container { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 0 15px; border-bottom: 1px solid #e2e8f0; margin: -15px -15px 15px -15px; height: 50px; flex-shrink: 0; }
+.top-nav-container { display: flex; justify-content: space-between; align-items: center; background: ; padding: 0 15px; border-bottom: 1px solid #e2e8f0; margin: -15px -15px 15px -15px; height: 50px; flex-shrink: 0; }
 .tab-menu { display: flex !important; flex-direction: row !important; overflow-x: auto; white-space: nowrap; align-items: center; }
 .tab-btn { padding: 0 15px; height: 50px; border: none; background: none; cursor: pointer; font-weight: bold; color: #64748b; border-bottom: 3px solid transparent; font-size: 12px; display: flex; align-items: center; }
 .tab-btn.active { color: var(--p); border-bottom-color: var(--p); }
@@ -82,3 +82,66 @@ tr.is-verified { background-color: #f0fdf4 !important; color: #166534 !important
 .form-row-compact { display: flex; gap: 10px; }
 .f-item { flex: 1; }
 .batch-filter-grid, .filter-grid-log { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end; }
+/* --- DARK MODE v8.27 --- */
+:root { --bg-in: #f0fdf4; --bg-out: #fef2f2; --bg-awal: #fffde7; --bg-akhir: #e8f5e9; }
+body.dark-mode { 
+    background-color: #0f172a; color: #e2e8f0; 
+    --bg-in: #064e3b; --bg-out: #450a0a; --bg-awal: #422006; --bg-akhir: #064e3b;
+}
+body.dark-mode .sidebar { background-color: #1e293b; border-right: 1px solid #334155; }
+body.dark-mode .nav-item:hover { background-color: #334155; }
+body.dark-mode .card, body.dark-mode .modal-content { background-color: #1e293b; border: 1px solid #334155; color: #e2e8f0; }
+body.dark-mode table th { background-color: #0f172a; color: #94a3b8; border-color: #334155; }
+body.dark-mode table td, body.dark-mode .modal-content td { border-color: #334155; color: #cbd5e1; }
+body.dark-mode tr:nth-child(even) { background-color: #1e293b; }
+body.dark-mode tr:hover { background-color: #334155; }
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #0f172a; color: #e2e8f0; border-color: #475569; }
+body.dark-mode .read-only { background-color: #334155; }
+body.dark-mode .autocomplete-items { background-color: #1e293b; border-color: #475569; }
+body.dark-mode .autocomplete-items div { border-bottom: 1px solid #334155; color: #e2e8f0; }
+body.dark-mode .autocomplete-items div:hover { background-color: #334155; }
+body.dark-mode .tab-btn { background-color: #1e293b; color: #94a3b8; border-color: #334155; }
+body.dark-mode .tab-btn.active { background-color: #3b82f6; color: white; }
+body.dark-mode #global-header, body.dark-mode #previewHeader, body.dark-mode #trxHeader { background-color: #1e293b !important; border-bottom: 1px solid #334155 !important; color: #e2e8f0 !important; }
+body.dark-mode #previewContent { background-color: #0f172a !important; border-color: #475569 !important; }
+/* --- PERBAIKAN BUG STICKY COLUMN PIVOT DARK MODE --- */
+body.dark-mode th.sticky-col,
+body.dark-mode td.sticky-col {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+body.dark-mode th.sticky-col {
+    background-color: #0f172a !important;
+}
+/* --- FROZEN PANES PIVOT (STICKY HEADER VERTICAL & HORIZONTAL) --- */
+/* 1. Beri background pada semua header agar angka tidak tembus saat discroll */
+#tableMutasi thead th {
+    position: sticky;
+    z-index: 5;
+    background-color: #f8fafc; /* Warna terang */
+    box-shadow: inset 0 -1px 0 #cbd5e1; /* Pengganti border bawah */
+}
+
+/* 2. Warna header saat Dark Mode aktif */
+body.dark-mode #tableMutasi thead th {
+    background-color: #0f172a;
+    box-shadow: inset 0 -1px 0 #334155;
+}
+
+/* 3. Kunci Baris Pertama (Kode, Nama, Awal, Tgl, IN, OUT, Akhir) ke atap layar */
+#tableMutasi thead tr:nth-child(1) th {
+    top: 0;
+    height: 40px; /* Kunci tingginya agar baris kedua sejajar */
+}
+
+/* 4. Kunci Baris Kedua (M, K) tepat di bawah baris pertama */
+#tableMutasi thead tr:nth-child(2) th {
+    top: 40px; 
+}
+
+/* 5. Kunci Sudut Emas (Pertemuan Scroll Atas & Kiri) */
+/* Harus z-index paling tinggi agar tidak tertabrak angka dari bawah maupun kanan */
+#tableMutasi thead th.sticky-col {
+    z-index: 10 !important;
+}
