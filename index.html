@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockMaster Pro v8.25 | Enterprise Edition</title>
-    <link rel="stylesheet" href="style.css?v=8.25">
+    <title>StockMaster Pro v8.26 | Enterprise Edition</title>
+    <link rel="stylesheet" href="style.css?v=8.26">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="is-public">
@@ -63,7 +63,7 @@
                 <button class="btn-outline" style="border-color: #2563eb; color: #2563eb; margin-top: 0; font-weight: bold; background: #eff6ff;" onclick="App.syncLoad()">Sync</button>
                 <button id="btnPushDrive" class="btn-outline private" style="display:none; border-color: #16a34a; color: #16a34a; margin-top: 0; font-weight: bold; background: #f0fdf4;" onclick="App.syncPush()">Push</button>
                 <button id="btnExportExcel" class="btn-export private" style="display:none" onclick="App.exportToExcel()">Export</button>
-                <button id="btnAuth" class="btn-primary" onclick="UI.showModal('modalLogin')">Login</button>
+                <button id="btnAuth" class="btn-primary" onclick="UI.openLogin()">Login</button>
                 <button id="btnLogout" class="btn-logout" onclick="Auth.logout()">Logout</button>
             </div>
         </div>
@@ -123,6 +123,6 @@
     
     <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.processImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
 
-    <script src="script.js?v=8.25"></script>
+    <script src="script.js?v=8.26"></script>
 </body>
 </html>
