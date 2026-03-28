@@ -15,20 +15,14 @@ const DB = {
     clear: () => localStorage.clear()
 };
 
-// --- HELPER UNTUK KONVERSI TANGGAL ---
 const DateHelper = {
-    toDB: (str) => { // Konversi DD-MM-YYYY atau DD-MM-YY menjadi YYYY-MM-DD
-        if(!str) return "";
-        let p = str.split('-');
-        if(p.length !== 3) return "";
-        let y = p[2]; 
-        if(y.length === 2) y = "20" + y; // Jika user hanya ketik 2 digit tahun, otomatis tambah 20xx
+    toDB: (str) => { 
+        if(!str) return ""; let p = str.split('-'); if(p.length !== 3) return "";
+        let y = p[2]; if(y.length === 2) y = "20" + y; 
         return `${y}-${p[1]}-${p[0]}`;
     },
-    toUI: (str) => { // Konversi YYYY-MM-DD menjadi DD-MM-YYYY
-        if(!str) return "";
-        let p = str.split('-');
-        if(p.length !== 3) return str;
+    toUI: (str) => { 
+        if(!str) return ""; let p = str.split('-'); if(p.length !== 3) return str;
         return `${p[2]}-${p[1]}-${p[0]}`;
     }
 };
@@ -47,7 +41,14 @@ const Auth = {
         if(!role) return;
         document.body.className = (role === 'admin') ? 'admin-mode' : 'guest-mode';
         document.querySelectorAll('.private').forEach(el => el.style.display = 'block');
-        if (role !== 'admin') { const btnPush = document.getElementById('btnPushDrive'); if (btnPush) btnPush.style.display = 'none'; }
+        
+        if (role !== 'admin') { 
+            const btnPush = document.getElementById('btnPushDrive'); if (btnPush) btnPush.style.display = 'none'; 
+        } else {
+            // FITUR BARU: Auto-Minimize Sidebar saat Admin Login
+            document.getElementById('sidebar').classList.add('mini');
+        }
+        
         document.getElementById('btnAuth').style.display = 'none'; document.getElementById('btnLogout').style.display = 'block';
     },
     logout: () => { localStorage.removeItem('currentUser'); location.reload(); }
@@ -68,22 +69,25 @@ const Engine = {
 const UI = {
     sortCol: 'kode', sortAsc: true, currentFocus: -1, 
 
-    // --- SMART DATE INPUT FORMATTER ---
+    // FITUR BARU: Pembersihan Modal Login
+    openLogin: () => {
+        document.getElementById('loginRole').value = 'guest';
+        document.getElementById('adminPass').value = '';
+        UI.loginUX('guest'); 
+        UI.showModal('modalLogin');
+    },
+
     formatDateInput: (el) => {
-        let v = el.value.replace(/\D/g, ''); // Buang semua huruf
+        let v = el.value.replace(/\D/g, ''); 
         if (v.length > 2) v = v.substring(0, 2) + '-' + v.substring(2);
         if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5, 9);
         el.value = v;
     },
     expandDate: (el) => {
         let v = el.value;
-        if (v.length === 8) { // Jika baru DD-MM-YY, jadikan DD-MM-20YY
-            let p = v.split('-');
-            if (p.length === 3) el.value = `${p[0]}-${p[1]}-20${p[2]}`;
-        }
-        if (el.id.startsWith('f_')) UI.refresh(); // Otomatis refresh jika yang diedit adalah form Filter
+        if (v.length === 8) { let p = v.split('-'); if (p.length === 3) el.value = `${p[0]}-${p[1]}-20${p[2]}`; }
+        if (el.id.startsWith('f_')) UI.refresh(); 
     },
-    // ----------------------------------
 
     sortStok: (col) => { if (UI.sortCol === col) { UI.sortAsc = !UI.sortAsc; } else { UI.sortCol = col; UI.sortAsc = true; } UI.refresh(); },
     showModal: (id) => document.getElementById(id).style.display = 'block',
@@ -355,8 +359,8 @@ const UI = {
 
 const App = {
     pendingTrx: null, driveURL: "https://script.google.com/macros/s/AKfycbwV_EsebWHPkoRH6DBngsumFc4GT90Tdhk1TU1B4KDLP4QQilHS2whhrwgqbABjdgH0/exec", 
-    syncLoad: async () => { const btn = document.querySelector('button[onclick="App.syncLoad()"]'); const origText = btn.innerText; btn.innerText = "Menarik..."; btn.disabled = true; try { const response = await fetch(App.driveURL); const data = await response.json(); if(data) { DB.set('m', data.m || []); DB.set('l', data.l || []); UI.refresh(); alert("✅ Sinkronisasi Berhasil!\nData terbaru dimuat."); } } catch (error) { console.error(error); alert("❌ Gagal menarik data."); } finally { btn.innerText = origText; btn.disabled = false; } },
-    syncPush: async () => { const btn = document.getElementById('btnPushDrive'); const origText = btn.innerText; btn.innerText = "Mengirim..."; btn.disabled = true; const dataToSave = { m: DB.get('m') || [], l: DB.get('l') || [] }; try { const response = await fetch(App.driveURL, { method: "POST", body: JSON.stringify(dataToSave) }); const result = await response.json(); if(result.status === 'sukses') { alert("✅ Push Berhasil!\nData disimpan ke Google Drive."); } } catch (error) { console.error(error); alert("❌ Gagal mengirim data."); } finally { btn.innerText = origText; btn.disabled = false; } },
+    syncLoad: async () => { const btn = document.querySelector('button[onclick="App.syncLoad()"]'); const origText = btn.innerText; btn.innerText = "🔄 Menarik..."; btn.disabled = true; try { const response = await fetch(App.driveURL); const data = await response.json(); if(data) { DB.set('m', data.m || []); DB.set('l', data.l || []); UI.refresh(); alert("✅ Sinkronisasi Berhasil!\nData terbaru dimuat."); } } catch (error) { console.error(error); alert("❌ Gagal menarik data."); } finally { btn.innerText = origText; btn.disabled = false; } },
+    syncPush: async () => { const btn = document.getElementById('btnPushDrive'); const origText = btn.innerText; btn.innerText = "☁️ Mengirim..."; btn.disabled = true; const dataToSave = { m: DB.get('m') || [], l: DB.get('l') || [] }; try { const response = await fetch(App.driveURL, { method: "POST", body: JSON.stringify(dataToSave) }); const result = await response.json(); if(result.status === 'sukses') { alert("✅ Push Berhasil!\nData disimpan ke Google Drive."); } } catch (error) { console.error(error); alert("❌ Gagal mengirim data."); } finally { btn.innerText = origText; btn.disabled = false; } },
     exportDB: () => { const data = { m: DB.get('m'), l: DB.get('l') }; const b = new Blob([JSON.stringify(data)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Backup_StockMaster_${new Date().getTime()}.json`; a.click(); },
     importDB: (input) => { const r = new FileReader(); r.onload = (e) => { const d = JSON.parse(e.target.result); DB.set('m', d.m); DB.set('l', d.l); alert("Database Lokal Berhasil Dimuat!"); UI.refresh(); }; r.readAsText(input.files[0]); },
     resetLog: () => { if(confirm("Hapus seluruh log lokal?")) { DB.set('l', []); UI.refresh(); } },
@@ -484,7 +488,6 @@ window.onload = () => {
     const pObj = new Date(); pObj.setDate(pObj.getDate() - 30); pObj.setMinutes(pObj.getMinutes() - pObj.getTimezoneOffset()); 
     const past30 = pObj.toISOString().split('T')[0];
     
-    // Inisialisasi awal ke format DD-MM-YYYY untuk semua Filter UI
     const todayUI = DateHelper.toUI(today);
     const past30UI = DateHelper.toUI(past30);
 
