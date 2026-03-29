@@ -6,6 +6,8 @@
     <title>StockMaster Pro v8.27 | Enterprise Edition</title>
     <link rel="stylesheet" href="style.css?v=8.27">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- TAMBAHKAN INI: Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="is-public">
 
@@ -109,19 +111,21 @@
     </main>
 
     <div id="modalLogin" class="modal">
-        <div class="modal-content sz-mini">
-            <h3>Akses Masuk</h3>
-            <select id="loginRole" onchange="UI.loginUX(this.value)">
-                <option value="staff">Staff</option>
-                <option value="admin">Administrator</option>
-            </select>
-            <div id="adminPassArea" style="display:block; margin-top: 10px;">
-                <input type="password" id="adminPass" placeholder="Masukkan Password..." onkeydown="if(event.key==='Enter') Auth.login()">
-            </div>
-            <button class="btn-primary" onclick="Auth.login()">Masuk</button>
-            <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
+    <div class="modal-content sz-mini">
+        <h3>Akses Masuk</h3>
+        
+        <!-- Input Email -->
+        <label style="font-size:11px; font-weight:bold; color:#64748b;">Email</label>
+        <input type="email" id="loginEmail" placeholder="nama@stockmaster.local">
+        
+        <!-- Input Password -->
+        <div id="adminPassArea" style="display:block; margin-top: 10px;">
+            <input type="password" id="adminPass" placeholder="Masukkan Password..." onkeydown="if(event.key==='Enter') Auth.login()">
         </div>
+        <button class="btn-primary" onclick="Auth.login()">Masuk</button>
+        <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
     </div>
+</div>
     <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
     <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
@@ -141,7 +145,6 @@
     </div>
     
     <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.processImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
-
-    <script src="script.js?v=8.27"></script>
+    <script src="script.js?v=<?= time() ?>"></script>
 </body>
 </html>
