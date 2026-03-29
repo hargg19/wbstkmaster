@@ -366,9 +366,63 @@ const UI = {
 };
 
 const App = {
-    pendingTrx: null, driveURL: "https://script.google.com/macros/s/AKfycbzcoxexEW1guQuH5dG1-ITl2TLhEi_A2pGCtpJ0B9OMvm_OgCBHlVP39cBvnaa9TMVo/exec", 
-    syncLoad: async () => { const btn = document.querySelector('button[onclick="App.syncLoad()"]'); const orig = btn.innerText; btn.innerText = "Menarik..."; btn.disabled = true; try { const res = await fetch(App.driveURL); const d = await res.json(); if(d) { DB.set('m', d.m || []); DB.set('l', d.l || []); UI.refresh(); alert("Berhasil Sinkron!"); } } catch (e) { alert("Gagal Load."); } finally { btn.innerText = orig; btn.disabled = false; } },
-    syncPush: async () => { const btn = document.getElementById('btnPushDrive'); const orig = btn.innerText; btn.innerText = "Mengirim..."; btn.disabled = true; try { const res = await fetch(App.driveURL, { method: "POST", body: JSON.stringify({ m: DB.get('m'), l: DB.get('l') }) }); const d = await res.json(); if(d.status === 'sukses') alert("Berhasil Simpan ke Drive!"); } catch (e) { alert("Gagal Push."); } finally { btn.innerText = orig; btn.disabled = false; } },
+    pendingTrx: null, driveURL: "https://script.google.com/macros/s/AKfycbwzBVHURmu558034qMu_iKEL_sQrdL1DqGaYewjrcURXlxhGxm_8A19SahMIYS4y4-_/exec", 
+    login: async () => {
+        const r = document.getElementById('loginRole').value;
+        const p = document.getElementById('adminPass').value; 
+        const btn = document.querySelector('#modalLogin .btn-primary'); 
+        
+        if (!p) { alert("Password kosong!"); return; }
+        btn.innerText = "Memverifikasi..."; btn.disabled = true;
+
+        try {
+            // Kita kirim POST dengan action: "LOGIN"
+            const response = await fetch(App.driveURL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "LOGIN", role: r, pass: p }) 
+            });
+            const result = await response.json();
+            
+            if (result.status === "sukses") {
+                DB.set('currentUser', { role: result.role }); 
+                Auth.applySession(result.role); 
+                UI.closeModal('modalLogin'); 
+                UI.refresh();
+            } else {
+                alert("❌ Password Salah!");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("⚠️ Gagal terhubung ke server! Cek URL /exec di script.js dan pastikan akses sudah 'Anyone'.");
+        }
+        btn.innerText = "Masuk"; btn.disabled = false;
+    },
+    syncPush: async () => {
+        const session = DB.get('currentUser');
+        if (session.role !== 'admin') { alert("Hanya Admin yang bisa Push!"); return; }
+        
+        // Minta konfirmasi password admin untuk keamanan double
+        const p = prompt("Konfirmasi Password Admin untuk Simpan ke Cloud:");
+        if (!p) return;
+
+        const btn = document.getElementById('btnPushDrive');
+        const origText = btn.innerText; btn.innerText = "☁️ Mengirim..."; btn.disabled = true;
+        
+        const dataToSave = { 
+            pass: p, // Kirim password ke server
+            m: DB.get('m') || [], 
+            l: DB.get('l') || [] 
+        };
+        
+        try {
+            const response = await fetch(App.driveURL, { method: "POST", body: JSON.stringify(dataToSave) });
+            const result = await response.json();
+            if(result.status === 'sukses') { alert("✅ Data tersimpan aman di Cloud!"); }
+            else { alert("❌ Gagal: " + (result.msg || "Password Salah")); }
+        } catch (error) {
+            alert("❌ Koneksi Gagal.");
+        } finally { btn.innerText = origText; btn.disabled = false; }
+    },
     exportDB: () => { const b = new Blob([JSON.stringify({ m: DB.get('m'), l: DB.get('l') })], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Backup_${new Date().getTime()}.json`; a.click(); },
     importDB: (input) => { const r = new FileReader(); r.onload = (e) => { const d = JSON.parse(e.target.result); DB.set('m', d.m); DB.set('l', d.l); UI.refresh(); alert("Data Dimuat!"); }; r.readAsText(input.files[0]); },
     resetLog: () => { if(confirm("Hapus semua log lokal?")) { DB.set('l', []); UI.refresh(); } },
