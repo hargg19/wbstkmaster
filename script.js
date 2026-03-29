@@ -891,103 +891,102 @@ const App = {
 window.onload = async () => {
     const t = new Date();
     const today = t.toISOString().split('T')[0];
-    const past30 = new Date(t.setDate(t.getDate()-30)).toISOString().split('T')[0];
-    
-    // Theme
-    if(localStorage.getItem('theme') === 'dark') {
+    const past30 = new Date(t.setDate(t.getDate() - 30)).toISOString().split('T')[0];
+
+    // 1. THEME SETUP
+    if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
         const btn = document.getElementById('btnTheme');
-        if(btn) btn.innerText = '☀️';
+        if (btn) btn.innerText = '☀️';
     }
-    
-    // Dropdown setup
+
+    // 2. DROPDOWN SETUP (MUTASI)
     const selY = document.getElementById('f_mutasi_y');
-    if(selY) {
-        for(let i = 2024; i <= 2030; i++) selY.innerHTML += `<option value="${i}">${i}</option>`;
+    if (selY) {
+        selY.innerHTML = ''; // Clear dulu agar tidak double saat refresh
+        for (let i = 2024; i <= 2030; i++) selY.innerHTML += `<option value="${i}">${i}</option>`;
         selY.value = new Date().getFullYear();
     }
     const selM = document.getElementById('f_mutasi_m');
-    if(selM) selM.value = new Date().getMonth() + 1;
-    
-    // Date inputs
+    if (selM) selM.value = new Date().getMonth() + 1;
+
+    // 3. DATE INPUTS SETUP
     const dateFields = {
         'f_day_in_tgl': today, 'f_day_out_tgl': today,
         'f_tgl_1': past30, 'f_tgl_2': today
     };
     Object.entries(dateFields).forEach(([id, val]) => {
         const el = document.getElementById(id);
-        if(el) el.value = DateHelper.toUI(val);
+        if (el) el.value = DateHelper.toUI(val);
     });
 
-    
-    // 🔥 CEK SESI SUPABASE (Ganti blok ini)
+    // 4. 🔥 CEK SESI SUPABASE (ASINKRON)
     try {
         const { data: { session }, error } = await sb.auth.getSession();
 
         if (session?.user && !error) {
+            // --- MODE LOGIN (ADMIN/STAFF) ---
             const email = session.user.email;
-            // Gunakan metadata jika sudah di-set saat signup, atau cek email seperti cara Akang
             let role = session.user.user_metadata?.role || (email === 'admin@stockmaster.local' ? 'admin' : 'staff');
 
+            // Simpan ke DB Lokal & Terapkan Sesi
             DB.set('currentUser', { role, email, userId: session.user.id });
             Auth.applySession(role);
             
-            // Pastikan DB.load() tidak bikin crash kalau network lambat
-            if (typeof DB.load === 'function') await DB.load(); 
-            } else {
-        // 1. Set status internal ke guest
-        DB.set('currentUser', { role: 'guest' });
-        
-        // 2. Bersihkan class mode dari body agar CSS tidak aktif
-        document.body.classList.remove('admin-mode', 'staff-mode');
-        document.body.classList.add('is-public');
+            // Load data jika fungsi tersedia
+            if (typeof DB.load === 'function') await DB.load();
+            
+            // Pastikan Tab Menu Muncul (Flex)
+            const tabContainer = document.querySelector('.top-nav-container');
+            if (tabContainer) tabContainer.style.display = 'flex';
 
-        // 3. SEMBUNYIKAN TAB (PAKSA)
-        // Kita tembak container tab-nya langsung lewat JS
-        const tabContainer = document.querySelector('.top-nav-container');
-        if (tabContainer) {
-            tabContainer.style.setProperty('display', 'none', 'important');
+        } else {
+            // --- MODE PUBLIC (GUEST) ---
+            document.body.classList.remove('admin-mode', 'staff-mode');
+            document.body.classList.add('is-public');
+            DB.set('currentUser', { role: 'guest' });
+
+            // Sembunyikan TAB MENU & SIDEBAR (Paksa !important)
+            const tabContainer = document.querySelector('.top-nav-container');
+            if (tabContainer) tabContainer.style.setProperty('display', 'none', 'important');
+            
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
+
+            // Sembunyikan semua elemen class .private
+            document.querySelectorAll('.private').forEach(el => {
+                el.style.setProperty('display', 'none', 'important');
+            });
+
+            // Atur Tombol Auth
+            const btnAuth = document.getElementById('btnAuth');
+            const btnLogout = document.getElementById('btnLogout');
+            if (btnAuth) btnAuth.style.display = 'block';
+            if (btnLogout) btnLogout.style.display = 'none';
         }
-
-        // 4. Sembunyikan Sidebar & Elemen Private lainnya
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) sidebar.style.display = 'none';
-
-        document.querySelectorAll('.private').forEach(el => {
-            el.style.setProperty('display', 'none', 'important');
-        });
-
-        // 5. Atur tombol Auth di pojok kanan
-        const btnAuth = document.getElementById('btnAuth');
-        const btnLogout = document.getElementById('btnLogout');
-        if (btnAuth) btnAuth.style.display = 'block';
-        if (btnLogout) btnLogout.style.display = 'none';
+    } catch (err) {
+        console.error("Supabase Auth Error:", err);
     }
 
-    catch (err) {
-        console.error("Auth Error:", err);
-        Auth.applySession('guest');
-    }
-
-    // Animasi & init
+    // 5. ANIMASI & REFRESH UI
     const main = document.getElementById('main-content');
-    if(main) {
-        main.classList.add('content-animate-in');
-        main.classList.add('visible');
+    if (main) {
+        main.classList.add('content-animate-in', 'visible');
     }
-        // Update UI otomatis jika status auth berubah (login/logout)
-    sb.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-            localStorage.removeItem('currentUser');
-            location.reload();
-        }
-    });
 
-    UI.refresh();
-    
+    // Hanya panggil UI.refresh jika bukan guest
+    const user = DB.get('currentUser');
+    if (user && user.role !== 'guest') {
+        UI.refresh();
+    }
+
+    // 6. GLOBAL CLICK LISTENER (AUTOCOMPLETE)
     document.addEventListener('click', (e) => {
-        const ids = ['t_k','t_n','b_f_kode','b_f_nama','l_f_kode','l_f_nama'];
-        if(!ids.includes(e.target.id))
-            document.querySelectorAll('.autocomplete-items').forEach(el => { if(el) el.style.display = 'none'; });
+        const ids = ['t_k', 't_n', 'b_f_kode', 'b_f_nama', 'l_f_kode', 'l_f_nama'];
+        if (!ids.includes(e.target.id)) {
+            document.querySelectorAll('.autocomplete-items').forEach(el => {
+                if (el) el.style.display = 'none';
+            });
+        }
     });
 };
