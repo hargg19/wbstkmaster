@@ -145,3 +145,34 @@ body.dark-mode #tableMutasi thead th {
 #tableMutasi thead th.sticky-col {
     z-index: 10 !important;
 }
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { background-color: rgba(0,0,0,0.05) !important; color: var(--p) !important; }
+body.dark-mode .sortable:hover { background-color: rgba(255,255,255,0.1) !important; color: white !important; }
+
+/* --- FROZEN PANES: TIGA KOLOM PERTAMA (KODE, NAMA, AWAL) --- */
+
+/* 1. Tentukan Lebar Tetap agar perhitungan 'left' tidak meleset */
+.k-kode { left: 0; width: 100px; min-width: 100px; }
+.k-nama { left: 100px; width: 180px; min-width: 180px; }
+.k-awal { left: 280px; width: 70px; min-width: 70px; } /* Jarak = 100 + 180 */
+
+/* 2. Pastikan semuanya Sticky */
+.sticky-col {
+    position: sticky !important;
+    z-index: 3; /* Lebih tinggi dari angka harian */
+}
+
+/* 3. Atur Warna di Mode Terang */
+.k-awal { background-color: #fffde7 !important; border-right: 2px solid #cbd5e1 !important; }
+
+/* 4. Atur Warna di Mode Gelap (Dark Mode) */
+body.dark-mode .k-awal { 
+    background-color: #422006 !important; 
+    color: #fde68a !important; 
+    border-right: 2px solid #334155 !important;
+}
+
+/* 5. Z-Index Spesial untuk Header (Sudut Kiri Atas) */
+#tableMutasi thead th.k-awal {
+    z-index: 15 !important;
+}

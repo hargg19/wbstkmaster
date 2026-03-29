@@ -108,7 +108,20 @@
         </div>
     </main>
 
-    <div id="modalLogin" class="modal"><div class="modal-content sz-mini"><h3>Akses</h3><select id="loginRole" onchange="UI.loginUX(this.value)"><option value="guest">Guest</option><option value="admin">Admin</option></select><div id="adminPassArea" style="display:none"><input type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter') Auth.login()"></div><button class="btn-primary" onclick="Auth.login()">Masuk</button><button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button></div></div>
+    <div id="modalLogin" class="modal">
+        <div class="modal-content sz-mini">
+            <h3>Akses Masuk</h3>
+            <select id="loginRole" onchange="UI.loginUX(this.value)">
+                <option value="staff">Staff</option>
+                <option value="admin">Administrator</option>
+            </select>
+            <div id="adminPassArea" style="display:block; margin-top: 10px;">
+                <input type="password" id="adminPass" placeholder="Masukkan Password..." onkeydown="if(event.key==='Enter') Auth.login()">
+            </div>
+            <button class="btn-primary" onclick="Auth.login()">Masuk</button>
+            <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
+        </div>
+    </div>
     <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
     <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan (Enter)</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
