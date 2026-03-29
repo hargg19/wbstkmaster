@@ -903,7 +903,7 @@ window.onload = async () => {
     // 2. DROPDOWN SETUP (MUTASI)
     const selY = document.getElementById('f_mutasi_y');
     if (selY) {
-        selY.innerHTML = ''; // Clear dulu agar tidak double saat refresh
+        selY.innerHTML = ''; 
         for (let i = 2024; i <= 2030; i++) selY.innerHTML += `<option value="${i}">${i}</option>`;
         selY.value = new Date().getFullYear();
     }
@@ -929,16 +929,14 @@ window.onload = async () => {
             const email = session.user.email;
             let role = session.user.user_metadata?.role || (email === 'admin@stockmaster.local' ? 'admin' : 'staff');
 
-            // Simpan ke DB Lokal & Terapkan Sesi
             DB.set('currentUser', { role, email, userId: session.user.id });
             Auth.applySession(role);
             
-            // Load data jika fungsi tersedia
             if (typeof DB.load === 'function') await DB.load();
             
-            // Pastikan Tab Menu Muncul (Flex)
-            const tabContainer = document.querySelector('.top-nav-container');
-            if (tabContainer) tabContainer.style.display = 'flex';
+            // Tampilkan Header Utama (Tab Menu)
+            const topNav = document.querySelector('.top-nav-container');
+            if (topNav) topNav.style.display = 'flex';
 
         } else {
             // --- MODE PUBLIC (GUEST) ---
@@ -946,23 +944,29 @@ window.onload = async () => {
             document.body.classList.add('is-public');
             DB.set('currentUser', { role: 'guest' });
 
-            // Sembunyikan TAB MENU & SIDEBAR (Paksa !important)
-            const tabContainer = document.querySelector('.top-nav-container');
-            if (tabContainer) tabContainer.style.setProperty('display', 'none', 'important');
+            // A. SEMBUNYIKAN TAB MENU & SIDEBAR (PAKSA)
+            const tabMenu = document.querySelector('.tab-menu');
+            if (tabMenu) tabMenu.style.setProperty('display', 'none', 'important');
             
             const sidebar = document.querySelector('.sidebar');
             if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
 
-            // Sembunyikan semua elemen class .private
+            // B. SEMBUNYIKAN SEMUA KONTEN PRIVAT (KECUALI AREA LOGIN)
             document.querySelectorAll('.private').forEach(el => {
-                el.style.setProperty('display', 'none', 'important');
+                // Kecuali area auth-group/nav-right agar tombol login tidak hilang
+                if (!el.classList.contains('auth-group') && !el.closest('.auth-group')) {
+                    el.style.setProperty('display', 'none', 'important');
+                }
             });
 
-            // Atur Tombol Auth
+            // C. TAMPILKAN TOMBOL LOGIN (PAKSA MUNCUL)
             const btnAuth = document.getElementById('btnAuth');
             const btnLogout = document.getElementById('btnLogout');
-            if (btnAuth) btnAuth.style.display = 'block';
-            if (btnLogout) btnLogout.style.display = 'none';
+            const topNav = document.querySelector('.top-nav-container');
+
+            if (topNav) topNav.style.display = 'flex'; // Header tetap ada untuk wadah tombol login
+            if (btnAuth) btnAuth.style.setProperty('display', 'block', 'important');
+            if (btnLogout) btnLogout.style.setProperty('display', 'none', 'important');
         }
     } catch (err) {
         console.error("Supabase Auth Error:", err);
@@ -974,7 +978,6 @@ window.onload = async () => {
         main.classList.add('content-animate-in', 'visible');
     }
 
-    // Hanya panggil UI.refresh jika bukan guest
     const user = DB.get('currentUser');
     if (user && user.role !== 'guest') {
         UI.refresh();
