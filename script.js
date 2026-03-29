@@ -934,13 +934,37 @@ window.onload = async () => {
             
             // Pastikan DB.load() tidak bikin crash kalau network lambat
             if (typeof DB.load === 'function') await DB.load(); 
-        } else {
-            // Mode public / Guest
-            Auth.applySession('guest'); // Gunakan fungsi Auth yang sudah ada agar tidak duplikasi code
-            if(document.getElementById('btnAuth')) document.getElementById('btnAuth').style.display = 'block';
-            if(document.getElementById('btnLogout')) document.getElementById('btnLogout').style.display = 'none';
+            } else {
+        // 1. Set status internal ke guest
+        DB.set('currentUser', { role: 'guest' });
+        
+        // 2. Bersihkan class mode dari body agar CSS tidak aktif
+        document.body.classList.remove('admin-mode', 'staff-mode');
+        document.body.classList.add('is-public');
+
+        // 3. SEMBUNYIKAN TAB (PAKSA)
+        // Kita tembak container tab-nya langsung lewat JS
+        const tabContainer = document.querySelector('.top-nav-container');
+        if (tabContainer) {
+            tabContainer.style.setProperty('display', 'none', 'important');
         }
-    } catch (err) {
+
+        // 4. Sembunyikan Sidebar & Elemen Private lainnya
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.style.display = 'none';
+
+        document.querySelectorAll('.private').forEach(el => {
+            el.style.setProperty('display', 'none', 'important');
+        });
+
+        // 5. Atur tombol Auth di pojok kanan
+        const btnAuth = document.getElementById('btnAuth');
+        const btnLogout = document.getElementById('btnLogout');
+        if (btnAuth) btnAuth.style.display = 'block';
+        if (btnLogout) btnLogout.style.display = 'none';
+    }
+
+    catch (err) {
         console.error("Auth Error:", err);
         Auth.applySession('guest');
     }
