@@ -367,35 +367,47 @@ const UI = {
 
 const App = {
     pendingTrx: null, driveURL: "https://script.google.com/macros/s/AKfycbwzBVHURmu558034qMu_iKEL_sQrdL1DqGaYewjrcURXlxhGxm_8A19SahMIYS4y4-_/exec", 
-    login: async () => {
-        const r = document.getElementById('loginRole').value;
-        const p = document.getElementById('adminPass').value; 
-        const btn = document.querySelector('#modalLogin .btn-primary'); 
-        
-        if (!p) { alert("Password kosong!"); return; }
-        btn.innerText = "Memverifikasi..."; btn.disabled = true;
+    syncLoad: async () => {
+        const btn = document.querySelector('button[onclick="App.syncLoad()"]');
+        if (!btn) return; // Keamanan jika tombol tidak ditemukan
+
+        const origText = btn.innerText; 
+        btn.innerText = "Menarik..."; 
+        btn.disabled = true;
 
         try {
-            // Kita kirim POST dengan action: "LOGIN"
+            // Kita panggil Google Script pakai metode GET (Default fetch)
             const response = await fetch(App.driveURL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "LOGIN", role: r, pass: p }) 
-            });
-            const result = await response.json();
+                method: "GET",
+                cache: "no-store" // Agar data selalu fresh, bukan dari cache
+            }); 
             
-            if (result.status === "sukses") {
-                DB.set('currentUser', { role: result.role }); 
-                Auth.applySession(result.role); 
-                UI.closeModal('modalLogin'); 
+            const data = await response.json();
+            
+            if (data.m && data.l) {
+                DB.set('m', data.m);
+                DB.set('l', data.l);
+                
+                // Set status guest jika belum login
+                if (!DB.get('currentUser')) {
+                    DB.set('currentUser', { role: 'guest' });
+                    Auth.applySession('guest');
+                }
+                
                 UI.refresh();
+                alert("✅ Data Stok Berhasil Diperbarui!");
+            } else if (data.error) {
+                alert("⚠️ Masalah Server: " + data.error);
             } else {
-                alert("❌ Password Salah!");
+                alert("❌ Database kosong atau format salah.");
             }
         } catch (error) {
-            console.error(error);
-            alert("⚠️ Gagal terhubung ke server! Cek URL /exec di script.js dan pastikan akses sudah 'Anyone'.");
+            console.error("Error Detail:", error);
+            alert("❌ Tombol Sync gagal terhubung ke Google. Pastikan URL di script.js sudah yang terbaru (/exec).");
+        } finally {
+            btn.innerText = origText; 
+            btn.disabled = false;
         }
-        btn.innerText = "Masuk"; btn.disabled = false;
     },
     syncPush: async () => {
         const session = DB.get('currentUser');
