@@ -152,9 +152,9 @@ body.dark-mode .sortable:hover { background-color: rgba(255,255,255,0.1) !import
 /* --- FROZEN PANES: TIGA KOLOM PERTAMA (KODE, NAMA, AWAL) --- */
 
 /* 1. Tentukan Lebar Tetap agar perhitungan 'left' tidak meleset */
-.k-kode { left: 0; width: 100px; min-width: 65px; }
-.k-nama { left: 100px; width: 180px; min-width: 100px; }
-.k-awal { left: 280px; width: 70px; min-width: 40px; } /* Jarak = 100 + 180 */
+.k-kode { left: 0; width: 50px; min-width: 50px; }
+.k-nama { left: 100px; width: 150px; min-width: 150px; }
+.k-awal { left: 280px; width: 40px; min-width: 40px; } /* Jarak = 100 + 180 */
 
 /* 2. Pastikan semuanya Sticky */
 .sticky-col {
