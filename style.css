@@ -153,8 +153,8 @@ body.dark-mode .sortable:hover { background-color: rgba(255,255,255,0.1) !import
 
 /* 1. Tentukan Lebar Tetap agar perhitungan 'left' tidak meleset */
 .k-kode { left: 0; width: 50px; min-width: 50px; }
-.k-nama { left: 100px; width: 150px; min-width: 150px; }
-.k-awal { left: 280px; width: 40px; min-width: 40px; } /* Jarak = 100 + 180 */
+.k-nama { left: 50px; width: 150px; min-width: 150px; }
+.k-awal { left: 200px; width: 40px; min-width: 40px; } /* Jarak = 100 + 180 */
 
 /* 2. Pastikan semuanya Sticky */
 .sticky-col {
