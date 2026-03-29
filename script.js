@@ -46,10 +46,25 @@ const Auth = {
             const result = await response.json();
             
             if (result.status === "sukses") {
-                DB.set('currentUser', { role: r }); 
-                Auth.applySession(r); 
-                UI.closeModal('modalLogin'); 
-                UI.refresh();
+                // Jalankan animasi keluar pada modal
+                const modal = document.querySelector('#modalLogin .modal-content');
+                modal.classList.add('modal-animate-out');
+
+                setTimeout(() => {
+                    DB.set('currentUser', { role: result.role }); 
+                    Auth.applySession(result.role); 
+                    UI.closeModal('modalLogin'); 
+                    modal.classList.remove('modal-animate-out'); // Reset class untuk login berikutnya
+                    
+                    // Jalankan animasi masuk pada konten utama
+                    const main = document.getElementById('main-content');
+                    main.classList.remove('content-animate-in');
+                    void main.offsetWidth; // Trigger reflow
+                    main.classList.add('content-animate-in');
+                    main.classList.add('visible');
+                    
+                    UI.refresh();
+                }, 400); // Tunggu animasi modal selesai (0.4s)
             } else {
                 alert("Akses Ditolak! Password Salah.");
                 document.getElementById('adminPass').value = '';
@@ -323,18 +338,19 @@ const UI = {
     openTrx: (t) => {
         const todayUI = DateHelper.toUI(new Date().toISOString().split('T')[0]); 
         const mContent = document.getElementById('trxBody'); mContent.style.padding = '0'; mContent.className = 'modal-content sz-medium';
-        let h = `<div id="trxHeader" style="cursor:grab; background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--s);"><span>Form ${t}</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px; display:flex; flex-direction:column;">`;
+        let h = `<div id="trxHeader" style="cursor:grab; background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--s);"><span>Form ${t}</span><span style="font-size:14px; color:#64748b;">✥</span></div><div style="padding: 15px; display:flex; flex-direction:column;">`;
+        h += `<label>Tgl:</label><input type="text" id="t_tgl" value="${todayUI}" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)">`;
         if(t === 'RET') { 
             h += `<label>Ref Out:</label><div style="display:flex;gap:4px;margin-bottom:5px;"><input id="t_ref_s"><button class="btn-primary" id="btnCariRef" onclick="UI.findRef()">Cari</button></div><select id="t_ret_item" onchange="UI.fillRet()"><option value="">--Cari Ref--</option></select><label>Barang:</label><input id="t_n" readonly class="read-only"><div class="form-row-compact"><div class="f-item"><label>Kode:</label><input id="t_k" readonly class="read-only"></div><div class="f-item"><label>Stok:</label><input id="t_stk_b" readonly class="read-only"></div></div><div class="form-row-compact"><div class="f-item"><label>Qty Lama:</label><input id="t_q_old" readonly class="read-only"></div><div class="f-item"><label>Koreksi Jadi:</label><input id="t_new_q" type="number"></div></div>`; 
         } else { 
-            h += `<label>Tgl:</label><input type="text" id="t_tgl" value="${todayUI}" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"><label>No. Ref:</label><input id="t_ref" placeholder="No. Nota">
+            h += `<label>No. Ref:</label><input id="t_ref" placeholder="No. Nota">
                   <label>Kode Barang:</label><div style="position:relative;"><input id="t_k" oninput="UI.showAutoList('k','${t}')" onfocus="UI.showAutoList('k','${t}')" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div>
                   <label>Nama Barang:</label><div style="position:relative;"><input id="t_n" oninput="UI.showAutoList('n','${t}')" onfocus="UI.showAutoList('n','${t}')" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div>`;
             if(t==='IN') { h += `<label>Batch / Rak:</label><input id="t_b" onchange="UI.checkBatchExist()"><div class="form-row-compact"><div class="f-item"><label>Qty:</label><input id="t_q" type="number"></div><div class="f-item"><label>Exp Date:</label><input type="text" id="t_exp" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div></div>`; } 
             else if (t === 'ADJ') { h += `<label>Total Stok:</label><input id="t_stk_tot" readonly class="read-only"><label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.updStk()"><option value="">--Pilih Kode--</option></select><div class="form-row-compact"><div class="f-item"><label>Stok Sistem:</label><input id="t_stk_b" readonly class="read-only"></div><div class="f-item"><label>Aksi:</label><select id="t_adj_type"><option value="OUT">📉 Kurang</option><option value="IN">📈 Lebih</option></select></div></div><div class="form-row-compact"><div class="f-item"><label>Selisih Qty:</label><input id="t_q" type="number"></div></div>`; } 
             else { h += `<label>Total Stok:</label><input id="t_stk_tot" readonly class="read-only"><label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.updStk()"><option value="">--Pilih Kode--</option></select><div class="form-row-compact"><div class="f-item"><label>Saldo:</label><input id="t_stk_b" readonly class="read-only"></div><div class="f-item"><label>Qty Keluar:</label><input id="t_q" type="number"></div></div>`; }
         }
-        h += `<label>Ket:</label><input type="text" id="t_ket"><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-primary" onclick="App.prepareSave('${t}')">Preview & Simpan</button><button class="btn-outline" onclick="UI.closeModal('modalTrx')">Tutup</button></div></div>`;
+        h += `<label>Ket:</label><input type="text" id="t_ket"><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-primary" onclick="App.prepareSave('${t}')">Preview</button><button class="btn-outline" onclick="UI.closeModal('modalTrx')">Tutup</button></div></div>`;
         mContent.innerHTML = h; UI.showModal('modalTrx'); Draggable.init('trxBody', 'trxHeader'); 
     },
     
@@ -418,7 +434,7 @@ const App = {
         if (!p) return;
 
         const btn = document.getElementById('btnPushDrive');
-        const origText = btn.innerText; btn.innerText = "☁️ Mengirim..."; btn.disabled = true;
+        const origText = btn.innerText; btn.innerText = "Mengirim..."; btn.disabled = true;
         
         const dataToSave = { 
             pass: p, // Kirim password ke server
@@ -441,22 +457,90 @@ const App = {
     exportToExcel: () => { const actBtn = document.querySelector('.tab-btn.active'); let tid = ""; if(actBtn.innerText.includes("Stok")) tid = "inventoryBody"; else if(actBtn.innerText.includes("Mutasi")) tid = "tableMutasi"; else if(actBtn.innerText.includes("Log")) tid = "logTableBody"; const el = document.getElementById(tid); const wb = XLSX.utils.table_to_book(el.tagName === 'TABLE' ? el : el.closest('table')); XLSX.writeFile(wb, `Laporan_${new Date().getTime()}.xlsx`); },
     
     prepareSave: (t) => {
-        let q = parseInt(document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value), ket = document.getElementById('t_ket').value.trim();
-        const tgl = DateHelper.toDB(document.getElementById('t_tgl')?.value || ""), exp = DateHelper.toDB(document.getElementById('t_exp')?.value || "");
-        if(!tgl || isNaN(q)) return alert("Data tidak valid!");
+        let l = DB.get('l') || []; 
+        const ms = DB.get('m') || [];
+        const qInput = document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value;
+        let q = parseInt(qInput); 
+        const ket = document.getElementById('t_ket')?.value.trim() || "-"; 
+        
+        const tglRaw = document.getElementById('t_tgl')?.value || "";
+        const tglDB = DateHelper.toDB(tglRaw);
+        if(!tglDB || tglDB.length !== 10) { alert("Format Tanggal tidak valid! (DD-MM-YYYY)"); return; }
+
+        const expRaw = document.getElementById('t_exp')?.value.trim() || ""; 
+        let expDB = "";
+        if(expRaw) {
+            expDB = DateHelper.toDB(expRaw);
+            if(!expDB || expDB.length !== 10) { alert("Format Expired tidak valid!"); return; }
+        }
+
+        if(!q || isNaN(q) || q < 0) { alert("Qty tidak valid!"); return; }
+        
+        let previewHTML = ""; 
+        let pendingData = null;
 
         if(t === 'RET') {
-            const r = document.getElementById('t_ref_s').value, k = document.getElementById('t_k').value, l = DB.get('l'), idx = l.findIndex(x => x.ref===r && x.kode===k && x.tipe==='OUT');
-            if(idx === -1) return alert("Data tidak ditemukan");
-            App.pendingTrx = { action: 'UPDATE', idx: idx, q: q, ket: ket, t: t };
+            const r = document.getElementById('t_ref_s').value; 
+            const k = document.getElementById('t_k').value; 
+            const n = document.getElementById('t_n').value;
+            const idx = l.findIndex(x => x.ref===r && x.kode===k && x.tipe==='OUT');
+            
+            if(idx !== -1) { 
+                // Tambahkan tglDB ke pendingData agar tercatat kapan return dilakukan
+                pendingData = { action: 'UPDATE', idx: idx, q: q, ket: ket, t: t, tgl: tglDB }; 
+                
+                previewHTML = `
+                    <div style="background:rgba(220, 38, 38, 0.1); padding:8px; border-radius:5px; margin-bottom:10px;">
+                        <b style="color:#dc2626;">TIPE: RETUR / KOREKSI KELUAR</b>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                        <tr><td width="35%"><b>Tgl Retur</b></td><td>: ${tglRaw}</td></tr>
+                        <tr><td><b>Ref Out</b></td><td>: ${r}</td></tr>
+                        <tr><td><b>Barang</b></td><td>: [${k}] ${n}</td></tr>
+                        <tr><td><b>Qty Baru</b></td><td>: <b style="color:#dc2626; font-size:16px;">${q}</b></td></tr>
+                        <tr><td><b>Catatan</b></td><td>: ${ket}</td></tr>
+                    </table>`; 
+            } else { alert("Data Ref tidak ditemukan"); return; }
         } else {
-            const ref = document.getElementById('t_ref').value.trim(), kode = document.getElementById('t_k').value.toUpperCase(), batch = (t === 'IN') ? document.getElementById('t_b').value : document.getElementById('t_b_sel').value;
-            if(!ref || !kode) return alert("Ref & Kode wajib!");
-            if ((t==='OUT'||t==='ADJ') && q > (parseInt(document.getElementById('t_stk_b').value)||0) && !(t==='ADJ'&&document.getElementById('t_adj_type').value==='IN')) return alert("Stok kurang!");
-            App.pendingTrx = { action: 'INSERT', tgl, ref, kode, batch, exp, qty: q, tipe: (t==='ADJ'?document.getElementById('t_adj_type').value:(t==='IN'?'IN':'OUT')), ket, v: false, t: t };
+            const ref = document.getElementById('t_ref').value.trim(); 
+            const kode = document.getElementById('t_k').value.toUpperCase(); 
+            const masterItem = ms.find(x => x.kode === kode);
+            const n = masterItem ? masterItem.nama : "Tidak Dikenal";
+
+            if(!ref || !kode) { alert("Ref dan Kode wajib diisi!"); return; }
+
+            const batch = (t === 'IN') ? document.getElementById('t_b').value : document.getElementById('t_b_sel').value;
+            let trType = (t === 'IN') ? 'IN' : 'OUT'; 
+            if (t === 'ADJ') trType = document.getElementById('t_adj_type').value;
+            
+            pendingData = { action: 'INSERT', tgl: tglDB, ref, kode, batch, exp: expDB, qty: q, tipe: trType, ket, v: false, t: t };
+            
+            let tipeColor = trType === 'IN' ? '#16a34a' : '#dc2626';
+            let labelAct = t === 'ADJ' ? (trType === 'IN' ? 'STOK OPNAME (+)' : 'STOK OPNAME (-)') : t;
+
+            // --- TEMPLATE PREVIEW LENGKAP v8.30 ---
+            previewHTML = `
+                <div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:5px; margin-bottom:10px;">
+                    <b style="color:var(--p);">TIPE:</b> ${labelAct}
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <tr><td width="35%"><b>Tanggal</b></td><td>: ${tglRaw}</td></tr>
+                    <tr><td><b>No. Ref</b></td><td>: ${ref}</td></tr>
+                    <tr><td><b>Kode</b></td><td>: ${kode}</td></tr>
+                    <tr><td><b>Nama</b></td><td>: ${n}</td></tr>
+                    <tr><td><b>Batch</b></td><td>: ${batch || '-'}</td></tr>
+                    ${t === 'IN' && expRaw ? `<tr><td><b>Exp Date</b></td><td>: ${expRaw}</td></tr>` : ''}
+                    <tr><td><b>Jumlah</b></td><td>: <b style="color:${tipeColor}; font-size:16px;">${q}</b></td></tr>
+                    <tr><td><b>Catatan</b></td><td>: ${ket}</td></tr>
+                </table>`;
         }
-        document.getElementById('previewContent').innerHTML = `Simpan transaksi <b>${t}</b> untuk <b>${App.pendingTrx.kode}</b> sejumlah <b>${q}</b>?`;
-        UI.showModal('modalPreview'); Draggable.init('previewBox', 'previewHeader');
+
+        App.pendingTrx = pendingData; 
+        document.getElementById('previewContent').innerHTML = previewHTML;
+        UI.showModal('modalPreview'); 
+        Draggable.reset('previewBox'); 
+        Draggable.init('previewBox', 'previewHeader'); 
+        setTimeout(() => document.getElementById('btnConfirmSave').focus(), 100); 
     },
 
     executeSave: () => {
@@ -488,7 +572,14 @@ window.onload = () => {
     if(document.getElementById('f_day_out_tgl')) document.getElementById('f_day_out_tgl').value = DateHelper.toUI(today);
     if(document.getElementById('f_tgl_1')) document.getElementById('f_tgl_1').value = DateHelper.toUI(past30);
     if(document.getElementById('f_tgl_2')) document.getElementById('f_tgl_2').value = DateHelper.toUI(today);
-    const session = DB.get('currentUser'); if(session && session.role) Auth.applySession(session.role);
+    const session = DB.get('currentUser'); 
+    if(session && session.role) Auth.applySession(session.role);
+    
+    // Munculkan konten utama dengan animasi saat pertama load
+    const main = document.getElementById('main-content');
+    main.classList.add('content-animate-in');
+    main.classList.add('visible');
+    
     UI.refresh();
     document.addEventListener('click', (e) => { if(!['t_k','t_n','b_f_kode','b_f_nama','l_f_kode','l_f_nama'].includes(e.target.id)) document.querySelectorAll('.autocomplete-items').forEach(el => el.style.display = 'none'); });
 };
