@@ -919,25 +919,30 @@ window.onload = async () => {
         if(el) el.value = DateHelper.toUI(val);
     });
 
-    // 🔥 CEK SESI SUPABASE (ini yang membuat tidak logout setelah refresh)
-    const {  session } = await sb.auth.getSession();
     
-    if (session?.user) {
-        const email = session.user.email;
-        let role = 'staff';
-        if (email === 'admin@stockmaster.local') role = 'admin';
-        
-        DB.set('currentUser', { role, email, userId: session.user.id });
-        Auth.applySession(role);
-        await DB.load();
-    } else {
-        // Mode public
-        document.body.className = 'is-public' + (localStorage.getItem('theme') === 'dark' ? ' dark-mode' : '');
-        const btnAuth = document.getElementById('btnAuth');
-        const btnLogout = document.getElementById('btnLogout');
-        if(btnAuth) btnAuth.style.display = 'block';
-        if(btnLogout) btnLogout.style.display = 'none';
-        document.querySelectorAll('.private').forEach(el => el.style.display = 'none');
+    // 🔥 CEK SESI SUPABASE (Ganti blok ini)
+    try {
+        const { data: { session }, error } = await sb.auth.getSession();
+
+        if (session?.user && !error) {
+            const email = session.user.email;
+            // Gunakan metadata jika sudah di-set saat signup, atau cek email seperti cara Akang
+            let role = session.user.user_metadata?.role || (email === 'admin@stockmaster.local' ? 'admin' : 'staff');
+
+            DB.set('currentUser', { role, email, userId: session.user.id });
+            Auth.applySession(role);
+            
+            // Pastikan DB.load() tidak bikin crash kalau network lambat
+            if (typeof DB.load === 'function') await DB.load(); 
+        } else {
+            // Mode public / Guest
+            Auth.applySession('guest'); // Gunakan fungsi Auth yang sudah ada agar tidak duplikasi code
+            if(document.getElementById('btnAuth')) document.getElementById('btnAuth').style.display = 'block';
+            if(document.getElementById('btnLogout')) document.getElementById('btnLogout').style.display = 'none';
+        }
+    } catch (err) {
+        console.error("Auth Error:", err);
+        Auth.applySession('guest');
     }
 
     // Animasi & init
@@ -946,7 +951,14 @@ window.onload = async () => {
         main.classList.add('content-animate-in');
         main.classList.add('visible');
     }
-    
+        // Update UI otomatis jika status auth berubah (login/logout)
+    sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('currentUser');
+            location.reload();
+        }
+    });
+
     UI.refresh();
     
     document.addEventListener('click', (e) => {
