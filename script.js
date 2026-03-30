@@ -226,23 +226,37 @@ const UI = {
         } UI.refresh();
     },
 
-showAutoList: (type, formType = '', e) => {
-        // STOP jika hanya menekan panah atau enter agar tidak blinking/reset
-        if (e && [38, 40, 13].includes(e.keyCode)) return;
+
+    showAutoList: (type, formType = '', e) => {
+        // 1. Abaikan jika hanya tombol navigasi (Panah/Enter/Tab)
+        if (e && [38, 40, 13, 9].includes(e.keyCode)) return;
 
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
         const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
         const inp = document.getElementById(inpId); const listEl = document.getElementById(listId);
         if(!inp || !listEl) return;
 
-        const ms = DB.get('m') || []; const val = inp.value.trim().toUpperCase(); 
-        
-        currentFocus = -1; // Reset hanya saat mulai mengetik baru
+        // --- TAMBAHKAN LOGIKA PEMBERSIHAN INSTANT DI SINI ---
+        if (['k', 'n'].includes(type)) {
+            // Jika ngetik di KODE, kosongkan NAMA. Jika ngetik di NAMA, kosongkan KODE.
+            const targetId = type === 'k' ? 't_n' : 't_k';
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) targetEl.value = ''; 
+            
+            // Kosongkan juga stok dan reset dropdown batch (biar tidak salah input)
+            const elStk = document.getElementById('t_stk_tot') || document.getElementById('t_stk_b');
+            if (elStk) elStk.value = '';
+            
+            const bSelect = document.getElementById('t_b_sel');
+            if (bSelect) bSelect.innerHTML = '<option value="">--Pilih Kode Dulu--</option>';
+        }
+        // --- AKHIR LOGIKA PEMBERSIHAN ---
+
+        const ms = DB.get('m') || []; 
+        const val = inp.value.trim().toUpperCase(); 
+        currentFocus = -1; 
 
         if(val === '') {
-            if (['k', 'n'].includes(type)) {
-                if (type === 'k') document.getElementById('t_n').value = ''; if (type === 'n') document.getElementById('t_k').value = '';
-            }
             listEl.style.display = 'none'; return;
         }
 
@@ -251,7 +265,6 @@ showAutoList: (type, formType = '', e) => {
         
         if(filtered.length === 0) { listEl.style.display = 'none'; return; }
 
-        // Render List
         listEl.innerHTML = filtered.map(x => `<div onclick="UI.selectAuto('${x.kode}', '${type}', '${formType}')"><b>${x.kode}</b><br><span style="color:#64748b;">${x.nama}</span></div>`).join('');
         listEl.style.display = 'block';
     },
