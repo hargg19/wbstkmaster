@@ -13,7 +13,7 @@
     <nav id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <span class="logo-txt">ADMIN PANEL</span>
-            <button class="toggle-btn" onclick="UI.toggleSidebar()">≡</button>
+            <button class="toggle-btn" onclick="UI.toggleSidebar()" aria-label="Toggle Sidebar">≡</button>
         </div>
         <div class="nav-menu">
             <div class="nav-item" onclick="App.openMasterAdd()" title="Database Barang">
@@ -70,38 +70,47 @@
 
         <header id="global-header">
             <div class="search-box">
+                <label for="searchInput" style="display:none;">Cari Barang</label>
                 <input type="text" id="searchInput" placeholder="Cari Kode atau Nama Komponen..." onkeyup="UI.refresh()">
             </div>
         </header>
 
         <div id="tab-stok" class="tab-pane active"><div class="card overflow-x"><table><thead><tr><th width="20%" class="sortable" onclick="UI.sortStok('kode')">Kode <span id="sort_kode">▲</span></th><th class="sortable" onclick="UI.sortStok('nama')">Nama Barang <span id="sort_nama"></span></th><th width="15%" class="sortable" onclick="UI.sortStok('stok')">Saldo <span id="sort_stok"></span></th><th>Status</th><th id="th_aksi" style="display:none; width:80px;">Aksi</th></tr></thead><tbody id="inventoryBody"></tbody></table></div></div>
-        
         <div id="tab-expiry" class="tab-pane"><div class="card overflow-x"><table><thead><tr><th width="15%">Kode</th><th>Nama Barang</th><th width="15%">Batch</th><th width="10%">Stok</th><th width="15%">Exp Date</th><th width="10%">Masa Max</th><th width="25%">Status Peringatan</th></tr></thead><tbody id="expiryTableBody"></tbody></table></div></div>
         
-        <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayinTableBody"></tbody></table></div></div>
-        <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayoutTableBody"></tbody></table></div></div>
+        <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact">
+            <div class="f-item"><label for="f_day_in_tgl">Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+            <div class="f-item"><label for="f_day_in_q">Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
+        </div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayinTableBody"></tbody></table></div></div>
+        
+        <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact">
+            <div class="f-item"><label for="f_day_out_tgl">Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+            <div class="f-item"><label for="f_day_out_q">Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
+        </div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayoutTableBody"></tbody></table></div></div>
         
         <div id="tab-mutasi" class="tab-pane"><div class="card"><div class="form-row-compact">
-            <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
-            <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"></select></div>
-            <div class="f-item"><label>Filter Produk:</label><input type="text" id="f_mutasi_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
+            <div class="f-item"><label for="f_mutasi_m">Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
+            <div class="f-item"><label for="f_mutasi_y">Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"></select></div>
+            <div class="f-item"><label for="f_mutasi_q">Filter Produk:</label><input type="text" id="f_mutasi_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
         </div></div><div class="card overflow-x" style="max-height: 70vh;"><table id="tableMutasi" class="table-pivot"><thead id="mutasiHeader"></thead><tbody id="mutasiTableBody"></tbody></table></div></div>
         
         <div id="tab-batch" class="tab-pane">
             <div class="card"><div class="batch-filter-grid">
-                <div class="f-item"><label>Kode Barang:</label><div style="position:relative;"><input type="text" id="b_f_kode" oninput="UI.showAutoList('b_f_k')" onfocus="UI.showAutoList('b_f_k')" onkeydown="UI.handleAutoKey(event, 'b_f_k')" autocomplete="off" placeholder="Pilih Kode..."><div id="b_f_k_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Nama Barang:</label><div style="position:relative;"><input type="text" id="b_f_nama" oninput="UI.showAutoList('b_f_n')" onfocus="UI.showAutoList('b_f_n')" onkeydown="UI.handleAutoKey(event, 'b_f_n')" autocomplete="off" placeholder="Pilih Nama..."><div id="b_f_n_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Total Stok:</label><input type="text" id="b_f_stok" readonly class="read-only" style="text-align:center; font-size:14px;"></div><div class="f-item"><label>Aksi:</label><div style="display:flex; gap:5px;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('batch')">Reset</button></div></div>
+                <div class="f-item"><label for="b_f_kode">Kode Barang:</label><div style="position:relative;"><input type="text" id="b_f_kode" oninput="UI.showAutoList('b_f_k')" onfocus="UI.showAutoList('b_f_k')" onkeydown="UI.handleAutoKey(event, 'b_f_k')" autocomplete="off" placeholder="Pilih Kode..."><div id="b_f_k_list" class="autocomplete-items"></div></div></div>
+                <div class="f-item"><label for="b_f_nama">Nama Barang:</label><div style="position:relative;"><input type="text" id="b_f_nama" oninput="UI.showAutoList('b_f_n')" onfocus="UI.showAutoList('b_f_n')" onkeydown="UI.handleAutoKey(event, 'b_f_n')" autocomplete="off" placeholder="Pilih Nama..."><div id="b_f_n_list" class="autocomplete-items"></div></div></div>
+                <div class="f-item"><label for="b_f_stok">Total Stok:</label><input type="text" id="b_f_stok" readonly class="read-only" style="text-align:center; font-size:14px;"></div><div class="f-item"><span>Aksi:</span><div style="display:flex; gap:5px;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('batch')">Reset</button></div></div>
             </div></div>
             <div class="card overflow-x"><table><thead><tr><th width="20%">Kode</th><th>Nama Barang</th><th width="20%">No. Batch</th><th width="15%">Exp Date</th><th width="15%">Stok Tersedia</th></tr></thead><tbody id="batchContainer"></tbody></table></div>
         </div>
 
         <div id="tab-log" class="tab-pane">
             <div class="card"><div class="filter-grid-log">
-                <div class="f-item"><label>Dari:</label><input type="text" id="f_tgl_1" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Ke:</label><input type="text" id="f_tgl_2" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
-                <div class="f-item"><label>Kode:</label><div style="position:relative;"><input type="text" id="l_f_kode" oninput="UI.showAutoList('l_f_k')" onfocus="UI.showAutoList('l_f_k')" onkeydown="UI.handleAutoKey(event, 'l_f_k')" autocomplete="off" placeholder="Kode..."><div id="l_f_k_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Nama:</label><div style="position:relative;"><input type="text" id="l_f_nama" oninput="UI.showAutoList('l_f_n')" onfocus="UI.showAutoList('l_f_n')" onkeydown="UI.handleAutoKey(event, 'l_f_n')" autocomplete="off" placeholder="Nama..."><div id="l_f_n_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Jenis:</label><select id="f_tipe"><option value="ALL">Semua</option><option value="IN">IN</option><option value="OUT">OUT</option></select></div><div class="f-item" style="display:flex; gap:5px; align-items:flex-end;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('log')">Reset</button></div>
+                <div class="f-item"><label for="f_tgl_1">Dari:</label><input type="text" id="f_tgl_1" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                <div class="f-item"><label for="f_tgl_2">Ke:</label><input type="text" id="f_tgl_2" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                <div class="f-item"><label for="l_f_kode">Kode:</label><div style="position:relative;"><input type="text" id="l_f_kode" oninput="UI.showAutoList('l_f_k')" onfocus="UI.showAutoList('l_f_k')" onkeydown="UI.handleAutoKey(event, 'l_f_k')" autocomplete="off" placeholder="Kode..."><div id="l_f_k_list" class="autocomplete-items"></div></div></div>
+                <div class="f-item"><label for="l_f_nama">Nama:</label><div style="position:relative;"><input type="text" id="l_f_nama" oninput="UI.showAutoList('l_f_n')" onfocus="UI.showAutoList('l_f_n')" onkeydown="UI.handleAutoKey(event, 'l_f_n')" autocomplete="off" placeholder="Nama..."><div id="l_f_n_list" class="autocomplete-items"></div></div></div>
+                <div class="f-item"><label for="f_tipe">Jenis:</label><select id="f_tipe"><option value="ALL">Semua</option><option value="IN">IN</option><option value="OUT">OUT</option></select></div>
+                <div class="f-item" style="display:flex; gap:5px; align-items:flex-end;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('log')">Reset</button></div>
             </div></div>
             <div class="card overflow-x"><table><thead><tr><th>Tgl</th><th>Ref</th><th>Kode</th><th>Nama</th><th>Batch</th><th>Qty</th><th>Tipe</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="logTableBody"></tbody></table></div>
         </div>
@@ -110,27 +119,31 @@
     <div id="modalLogin" class="modal">
         <div class="modal-content sz-mini">
             <h3>Akses Masuk</h3>
+            <label for="loginRole">Pilih Role:</label>
             <select id="loginRole" onchange="UI.loginUX(this.value)">
                 <option value="staff">Staff</option>
                 <option value="admin">Administrator</option>
             </select>
             <div id="adminPassArea" style="display:block; margin-top: 10px;">
+                <label for="adminPass">Password:</label>
                 <input type="password" id="adminPass" placeholder="Masukkan Password..." onkeydown="if(event.key==='Enter') Auth.login()">
             </div>
             <button class="btn-primary" onclick="Auth.login()">Masuk</button>
             <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
         </div>
     </div>
+
     <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
+    
     <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
     <div id="modalMaster" class="modal">
         <div class="modal-content sz-mini">
             <h3 id="masterTitle">Master Barang</h3>
             <input type="hidden" id="m_k_old">
-            <label>Kode Barang:</label><input id="m_k" placeholder="Contoh: STM32-F103">
-            <label>Nama Barang:</label><input id="m_n">
-            <label>Masa Simpan (Hari):</label><input id="m_m" type="number" placeholder="Contoh: 365">
+            <label for="m_k">Kode Barang:</label><input id="m_k" placeholder="Contoh: STM32-F103">
+            <label for="m_n">Nama Barang:</label><input id="m_n">
+            <label for="m_m">Masa Simpan (Hari):</label><input id="m_m" type="number" placeholder="Contoh: 365">
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <button class="btn-primary" style="flex:1;" onclick="App.saveMaster()">💾 Simpan</button>
                 <button class="btn-outline" style="flex:1; margin-top:0;" onclick="UI.closeModal('modalMaster')">Batal</button>
@@ -139,7 +152,12 @@
         </div>
     </div>
     
-    <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.saveImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
+    <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3>
+        <label for="importArea">Paste Data Excel/Teks:</label>
+        <textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea>
+        <button class="btn-primary" onclick="App.saveImport()">Import</button>
+        <button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button>
+    </div></div>
 
     <script src="script.js?v=8.27"></script>
 </body>
