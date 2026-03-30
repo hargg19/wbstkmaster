@@ -243,3 +243,26 @@ body.dark-mode .k-awal {
 /* Inisialisasi awal agar konten bisa muncul lewat animasi */
 #main-content { opacity: 0; }
 #main-content.visible { opacity: 1; }
+
+/* Toast Notification Style */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 14px;
+    animation: fadeInOut 1s ease-in-out;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; bottom: 10px; }
+    20% { opacity: 1; bottom: 20px; }
+    80% { opacity: 1; bottom: 20px; }
+    100% { opacity: 0; bottom: 10px; }
+}
