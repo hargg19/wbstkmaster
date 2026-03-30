@@ -416,10 +416,8 @@ const App = {
     syncLoad: async () => {
         const btn = document.querySelector('button[onclick="App.syncLoad()"]');
         if (btn) { btn.innerText = "Syncing..."; btn.disabled = true; }
-        
-        await DB.load(); // Tarik data terbaru dari Supabase
-        UI.refresh();    // Render ulang tabel
-        
+        await DB.load(); 
+        UI.refresh();    
         if (btn) { btn.innerText = '🔄 Sync'; btn.disabled = false; }
     },
     
@@ -463,21 +461,13 @@ const App = {
         const n = document.getElementById('m_n').value.trim();
         const m = document.getElementById('m_m').value;
         const old_k = document.getElementById('m_k_old').value;
-
         if (!k || !n) return alert("Kode dan Nama Barang wajib diisi!");
-
         try {
-            if (old_k && old_k !== k) {
-                await sb.from('master_barang').delete().eq('kode', old_k);
-            }
-            const { error } = await sb.from('master_barang').upsert({
-                kode: k, nama: n, masa: m ? parseInt(m) : 0
-            });
+            if (old_k && old_k !== k) { await sb.from('master_barang').delete().eq('kode', old_k); }
+            const { error } = await sb.from('master_barang').upsert({ kode: k, nama: n, masa: m ? parseInt(m) : 0 });
             if (error) throw error;
-
             UI.closeModal('modalMaster');
-            await DB.load(); // Refresh Supabase
-            UI.refresh();
+            await DB.load(); UI.refresh();
             alert("Data barang berhasil disimpan!");
         } catch (err) { alert("Gagal menyimpan: " + err.message); }
     },
@@ -489,32 +479,62 @@ const App = {
                 const { error } = await sb.from('master_barang').delete().eq('kode', k);
                 if (error) throw error;
                 UI.closeModal('modalMaster');
-                await DB.load();
-                UI.refresh();
+                await DB.load(); UI.refresh();
             } catch(err) { alert("Gagal menghapus data dari Supabase."); }
         }
     },
 
+    // 🌟 MASUKKAN DI SINI: FUNGSI IMPORT MASSAL SUPABASE
+    saveImport: async () => {
+        const area = document.getElementById('importArea');
+        const val = area.value.trim();
+        if (!val) return alert("Data kosong! Silakan copy-paste dari Excel.");
+        
+        const lines = val.split('\n');
+        let dataToPush = [];
+        lines.forEach(line => {
+            const p = line.split('\t');
+            if (p.length >= 2) {
+                dataToPush.push({
+                    kode: p[0].trim().toUpperCase(),
+                    nama: p[1].trim(),
+                    masa: p[2] ? parseInt(p[2].trim()) : 0
+                });
+            }
+        });
+
+        if (dataToPush.length === 0) return alert("Format data tidak valid!");
+        const btn = document.querySelector('#modalImport .btn-primary');
+        const originalText = btn.innerText;
+        btn.innerText = '⏳ Mengirim...'; btn.disabled = true;
+
+        try {
+            const { error } = await sb.from('master_barang').upsert(dataToPush, { onConflict: 'kode' });
+            if (error) throw error;
+            alert(`Berhasil! ${dataToPush.length} barang masuk ke database.`);
+            UI.closeModal('modalImport');
+            area.value = ''; 
+            await DB.load(); UI.refresh();
+        } catch (err) { alert("Gagal Import: " + err.message); } 
+        finally { btn.innerText = originalText; btn.disabled = false; }
+    },
+
     prepareSave: (t) => {
+        // ... (kode prepareSave Akang tetap sama seperti di prompt) ...
         let l = DB.get('l') || []; const ms = DB.get('m') || [];
         const qInput = document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value;
         let q = parseInt(qInput); const ket = document.getElementById('t_ket')?.value.trim() || "-";
         const tglRaw = document.getElementById('t_tgl')?.value || ""; const tglDB = DateHelper.toDB(tglRaw);
-        
         if(!tglDB || tglDB.length !== 10) { alert("Format Tanggal tidak valid! (DD-MM-YYYY)"); return; }
         const expRaw = document.getElementById('t_exp')?.value.trim() || ""; let expDB = DateHelper.toDB(expRaw);
         if(t === 'IN' && expRaw && expDB.length !== 10) { alert("Format Expired salah!"); return; }
-
         if(isNaN(q) || q <= 0) { alert("Qty tidak valid!"); return; }
-
         let previewHTML = "";
-
         if(t === 'RET') {
             const rData = document.getElementById('t_ret_item').value; if(!rData) return;
             const refLog = JSON.parse(rData); const stkb = parseInt(document.getElementById('t_stk_b').value); const oldQ = parseInt(document.getElementById('t_q_old').value);
             if(q > oldQ) { alert(`Koreksi maksimal ${oldQ}`); return; }
             if(q === oldQ) { alert("Qty baru sama dengan yang lama, tidak ada perubahan."); return; }
-            
             const selisih = oldQ - q;
             window.pendingData = { tgl: tglDB, ref: refLog.ref + "-RET", kode: refLog.kode, batch: refLog.batch, exp: refLog.exp, qty: selisih, tipe: 'IN', ket: "RETURN/KOREKSI REF: " + refLog.ref, t: t };
             previewHTML = `<b>TIPE:</b> RETURN / KOREKSI<br><b>Ref Awal:</b> ${refLog.ref}<br><b>Kode:</b> ${refLog.kode}<br><b>Qty Kembali ke Stok:</b> ${selisih}`;
@@ -524,10 +544,8 @@ const App = {
             if(!ref || !kode) { alert("Ref dan Kode wajib diisi!"); return; }
             const batch = (t === 'IN') ? document.getElementById('t_b').value : document.getElementById('t_b_sel').value;
             let trType = (t === 'IN') ? 'IN' : 'OUT'; if (t === 'ADJ') trType = document.getElementById('t_adj_type').value;
-            
             window.pendingData = { tgl: tglDB, ref, kode, batch, exp: expDB, qty: q, tipe: trType, ket, t: t };
             let labelAct = t === 'ADJ' ? (trType === 'IN' ? 'STOK OPNAME (+)' : 'STOK OPNAME (-)') : t;
-            
             previewHTML = `<div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:5px; margin-bottom:10px;"><b style="color:var(--p);">TIPE:</b> ${labelAct}</div>
             <table style="width:100%; font-size:13px;">
                 <tr><td width="35%"><b>Tanggal</b></td><td>: ${tglRaw}</td></tr>
@@ -538,7 +556,6 @@ const App = {
                 <tr><td><b>Qty</b></td><td>: <b style="color:${trType === 'IN' ? '#16a34a' : '#dc2626'}">${q}</b></td></tr>
             </table>`;
         }
-
         document.getElementById('previewContent').innerHTML = previewHTML;
         UI.showModal('modalPreview');
     },
@@ -547,35 +564,18 @@ const App = {
         if (!window.pendingData) return;
         const btn = document.querySelector('#modalPreview .btn-primary');
         if (btn) { btn.innerText = 'Menyimpan...'; btn.disabled = true; }
-        
         try {
-            // EKSEKUSI TRANSAKSI: Simpan ke tabel log Supabase
             const { error } = await sb.from('transaksi_log').insert({
-                tgl: window.pendingData.tgl,
-                ref: window.pendingData.ref,
-                kode: window.pendingData.kode,
-                batch: window.pendingData.batch || null,
-                qty: window.pendingData.qty,
-                tipe: window.pendingData.tipe,
-                ket: window.pendingData.ket || null,
-                exp: window.pendingData.exp || null,
-                v: false
+                tgl: window.pendingData.tgl, ref: window.pendingData.ref, kode: window.pendingData.kode,
+                batch: window.pendingData.batch || null, qty: window.pendingData.qty, tipe: window.pendingData.tipe,
+                ket: window.pendingData.ket || null, exp: window.pendingData.exp || null, v: false
             });
-
             if (error) throw error;
-
-            UI.closeModal('modalPreview');
-            UI.closeModal('trxBody'); // Tutup modal form awal
-            await DB.load(); // Segarkan data dari server
-            UI.refresh();    // Render ulang UI
+            UI.closeModal('modalPreview'); UI.closeModal('trxBody');
+            await DB.load(); UI.refresh();
             alert("Transaksi berhasil disimpan!");
-            
-        } catch (err) {
-            alert("Gagal menyimpan transaksi: " + err.message);
-        } finally {
-            if (btn) { btn.innerText = '✅ Konfirmasi'; btn.disabled = false; }
-            window.pendingData = null;
-        }
+        } catch (err) { alert("Gagal menyimpan transaksi: " + err.message); } 
+        finally { if (btn) { btn.innerText = '✅ Konfirmasi'; btn.disabled = false; } window.pendingData = null; }
     }
 };
 
@@ -584,67 +584,75 @@ window.onload = async () => {
     const today = t.toISOString().split('T')[0];
     const past30 = new Date(t.setDate(t.getDate() - 30)).toISOString().split('T')[0];
 
+    // 1. Theme & Date Init
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
         const btn = document.getElementById('btnTheme'); if (btn) btn.innerText = '☀️';
     }
-    const selY = document.getElementById('f_mutasi_y');
-    if (selY) {
-        selY.innerHTML = ''; 
-        for (let i = 2024; i <= 2030; i++) selY.innerHTML += `<option value="${i}">${i}</option>`;
-        selY.value = new Date().getFullYear();
-    }
-    const selM = document.getElementById('f_mutasi_m'); if (selM) selM.value = new Date().getMonth() + 1;
-
     const dateFields = { 'f_day_in_tgl': today, 'f_day_out_tgl': today, 'f_tgl_1': past30, 'f_tgl_2': today };
     Object.entries(dateFields).forEach(([id, val]) => {
         const el = document.getElementById(id); if (el) el.value = DateHelper.toUI(val);
     });
 
+    // 2. Cek Sesi Supabase
     try {
         const { data: { session }, error } = await sb.auth.getSession();
 
         if (session?.user && !error) {
+            // --- MODE LOGIN (ADMIN/STAFF) ---
             const email = session.user.email;
             let role = session.user.user_metadata?.role || (email === 'admin@stockmaster.local' ? 'admin' : 'staff');
+            DB.set('currentUser', { role, email });
 
-            DB.set('currentUser', { role, email, userId: session.user.id });
-            
-            document.body.classList.remove('is-public'); document.body.classList.add(role + '-mode');
+            document.body.classList.remove('is-public');
+            document.body.classList.add(role + '-mode');
             Auth.applySession(role);
 
-            const topNav = document.querySelector('.top-nav-container'); if (topNav) topNav.style.removeProperty('display');
+            // Munculkan semua UI Privat
             const tabMenu = document.querySelector('.tab-menu'); if (tabMenu) tabMenu.style.removeProperty('display');
             const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.removeProperty('display');
             document.querySelectorAll('.private').forEach(el => el.style.removeProperty('display'));
-            const authGroup = document.querySelector('.auth-group'); if (authGroup) authGroup.style.marginLeft = 'auto';
-
-            // Load Data dengan aman & Aktifkan Realtime
-            try { 
-                if (typeof DB.load === 'function') {
-                    await DB.load();
-                    DB.subscribe(); // 🌟 Jalankan radar realtime di sini
-                }
-            } catch (loadErr) { console.warn("Error load/subscribe:", loadErr); }
+            
+            await DB.load();
+            DB.subscribe(); // Aktifkan Realtime
 
         } else {
-            document.body.classList.remove('admin-mode', 'staff-mode'); document.body.classList.add('is-public');
+            // --- MODE PUBLIC (GUEST) ---
+            document.body.classList.remove('admin-mode', 'staff-mode');
+            document.body.classList.add('is-public');
             DB.set('currentUser', { role: 'guest' });
 
-            const tabMenu = document.querySelector('.tab-menu'); if (tabMenu) tabMenu.style.setProperty('display', 'none', 'important');
-            const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
-            document.querySelectorAll('.private').forEach(el => { if (!el.classList.contains('auth-group') && !el.closest('.auth-group')) el.style.setProperty('display', 'none', 'important'); });
+            // SEMBUNYIKAN MENU (Kecuali Stok Ringkas)
+            const tabMenu = document.querySelector('.tab-menu');
+            if (tabMenu) tabMenu.style.setProperty('display', 'none', 'important');
+            
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
 
-            const topNav = document.querySelector('.top-nav-container'); const btnAuth = document.getElementById('btnAuth'); const btnLogout = document.getElementById('btnLogout');
-            if (topNav) topNav.style.display = 'flex';
-            if (btnAuth) btnAuth.style.setProperty('display', 'block', 'important');
-            if (btnLogout) btnLogout.style.setProperty('display', 'none', 'important');
+            // Sembunyikan elemen .private lainnya
+            document.querySelectorAll('.private').forEach(el => {
+                if (!el.classList.contains('auth-group') && !el.closest('.auth-group')) {
+                    el.style.setProperty('display', 'none', 'important');
+                }
+            });
+
+            // Pastikan tombol login di kanan
+            const authGroup = document.querySelector('.auth-group');
+            if (authGroup) authGroup.style.setProperty('margin-left', 'auto', 'important');
+
+            // TARIK DATA UNTUK STOK RINGKAS
+            await DB.load();
         }
-    } catch (err) { console.error("Auth Error:", err); }
+    } catch (err) {
+        console.error("Auth Error:", err);
+    }
 
-    const main = document.getElementById('main-content'); if (main) main.classList.add('content-animate-in', 'visible');
-    const user = DB.get('currentUser'); if (user && user.role !== 'guest') UI.refresh();
+    // 3. Final Render
+    const main = document.getElementById('main-content');
+    if (main) main.classList.add('content-animate-in', 'visible');
+    UI.refresh(); // Ini yang akan menggambar tabel stok ringkas untuk guest
 
+    // Click Listener Autocomplete
     document.addEventListener('click', (e) => {
         const ids = ['t_k', 't_n', 'b_f_kode', 'b_f_nama', 'l_f_kode', 'l_f_nama'];
         if (!ids.includes(e.target.id)) document.querySelectorAll('.autocomplete-items').forEach(el => { if (el) el.style.display = 'none'; });
