@@ -925,20 +925,39 @@ window.onload = async () => {
         const { data: { session }, error } = await sb.auth.getSession();
 
         if (session?.user && !error) {
-            // --- MODE LOGIN (ADMIN/STAFF) ---
+            // 1. TENTUKAN ROLE
             const email = session.user.email;
             let role = session.user.user_metadata?.role || (email === 'admin@stockmaster.local' ? 'admin' : 'staff');
-
             DB.set('currentUser', { role, email, userId: session.user.id });
+
+            // 2. PAKSA CLASS BODY (Ini kunci agar Sidebar muncul)
+            document.body.classList.remove('is-public');
+            document.body.classList.add(role + '-mode'); // otomatis jadi admin-mode atau staff-mode
             Auth.applySession(role);
             
-            if (typeof DB.load === 'function') await DB.load();
-            
-            // Tampilkan Header Utama (Tab Menu)
+            // 3. MUNCULKAN UI DULUAN (Sebelum load data)
             const topNav = document.querySelector('.top-nav-container');
-            if (topNav) topNav.style.display = 'flex';
+            if (topNav) topNav.style.setProperty('display', 'flex', 'important');
+            
+            const tabMenu = document.querySelector('.tab-menu');
+            if (tabMenu) tabMenu.style.setProperty('display', 'flex', 'important');
+            
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.style.removeProperty('display'); // Biar CSS bawaan yang atur flex/none
 
-        } else {
+            document.querySelectorAll('.private').forEach(el => {
+                // Copot inline display: none agar kembali ke aturan CSS
+                el.style.removeProperty('display'); 
+            });
+
+            // 4. LOAD DATA DENGAN PENGAMAN (Kalau error, UI tetap muncul)
+            try {
+                if (typeof DB.load === 'function') await DB.load();
+            } catch (loadErr) {
+                console.warn("DB Load Error (Abaikan jika masih proses migrasi Supabase):", loadErr);
+            }
+        }
+        else {
             // --- MODE PUBLIC (GUEST) ---
             document.body.classList.remove('admin-mode', 'staff-mode');
             document.body.classList.add('is-public');
