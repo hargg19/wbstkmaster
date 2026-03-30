@@ -3,6 +3,8 @@ const SUPABASE_URL = "https://vwgdrmyrutsjwnmzfrwv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Z2RybXlydXRzandubXpmcnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3OTMyMjQsImV4cCI6MjA5MDM2OTIyNH0.8abwamRFE-hVpA4Xyy4zcZAbZt-Gm6tYaMDfpkh9-nI";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+let currentFocus = -1;
+
 const Draggable = {
     init: (elId, handleId) => {
         const el = document.getElementById(elId); const handle = document.getElementById(handleId); if (!el || !handle) return;
@@ -136,6 +138,35 @@ const UI = {
     sortMutasiCol: 'kode', sortMutasiAsc: true, 
     currentFocus: -1,
 
+    // Tambahkan/Update di dalam objek UI: { ... }
+    toggleVerify: async (id) => {
+        // 1. Cari data di cache lokal (variabel l)
+        const allLogs = DB.get('l');
+        const logIndex = allLogs.findIndex(x => x.id == id);
+        if (logIndex === -1) return;
+
+        const newStatus = !allLogs[logIndex].v;
+
+        try {
+            // 2. Update ke Supabase
+            const { error } = await sb.from('transaksi_log')
+                .update({ v: newStatus })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // 3. Update cache lokal agar saat pindah tab tidak hilang
+            allLogs[logIndex].v = newStatus;
+            
+            // 4. Toast notifikasi singkat (1 detik)
+            UI.showToast(newStatus ? "✅ Terverifikasi" : "🔄 Verifikasi Dibatalkan");
+
+        } catch (err) {
+            alert("Gagal update verifikasi: " + err.message);
+            UI.refresh(); // Reset tampilan jika gagal
+        }
+    },
+
     toggleTheme: () => {
         const btn = document.getElementById('btnTheme');
         if (document.body.classList.contains('dark-mode')) {
@@ -195,62 +226,119 @@ const UI = {
         } UI.refresh();
     },
 
-    showAutoList: (type, formType = '') => {
+showAutoList: (type, formType = '', e) => {
+        // STOP jika hanya menekan panah atau enter agar tidak blinking/reset
+        if (e && [38, 40, 13].includes(e.keyCode)) return;
+
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
-        const listId = inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list');
+        const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
         const inp = document.getElementById(inpId); const listEl = document.getElementById(listId);
         if(!inp || !listEl) return;
-        const ms = DB.get('m') || []; const val = inp.value.trim().toUpperCase(); UI.currentFocus = -1; 
+
+        const ms = DB.get('m') || []; const val = inp.value.trim().toUpperCase(); 
+        
+        currentFocus = -1; // Reset hanya saat mulai mengetik baru
+
         if(val === '') {
             if (['k', 'n'].includes(type)) {
                 if (type === 'k') document.getElementById('t_n').value = ''; if (type === 'n') document.getElementById('t_k').value = '';
-                if(document.getElementById('t_stk_tot')) document.getElementById('t_stk_tot').value = '';
-                if(document.getElementById('t_b_sel')) document.getElementById('t_b_sel').innerHTML = '<option value="">--Pilih Kode--</option>';
             }
             listEl.style.display = 'none'; return;
         }
+
         const isKode = ['t_k', 'b_f_kode', 'l_f_kode'].includes(inpId);
         const filtered = ms.filter(x => (isKode ? (x.kode||'').toUpperCase() : (x.nama||'').toUpperCase()).includes(val));
+        
         if(filtered.length === 0) { listEl.style.display = 'none'; return; }
+
+        // Render List
         listEl.innerHTML = filtered.map(x => `<div onclick="UI.selectAuto('${x.kode}', '${type}', '${formType}')"><b>${x.kode}</b><br><span style="color:#64748b;">${x.nama}</span></div>`).join('');
         listEl.style.display = 'block';
     },
 
     handleAutoKey: (e, type, formType) => {
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
-        const listId = inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list');
-        const listEl = document.getElementById(listId);
-        if(!listEl || listEl.style.display === 'none') return;
-        let items = listEl.getElementsByTagName('div'); if(!items || items.length === 0) return;
-        if (e.key === 'ArrowDown') { e.preventDefault(); UI.currentFocus++; UI.addActive(items); } 
-        else if (e.key === 'ArrowUp') { e.preventDefault(); UI.currentFocus--; UI.addActive(items); } 
-        else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (UI.currentFocus > -1) { items[UI.currentFocus].click(); } else if (items.length > 0) { items[0].click(); } }
-    },
-    
-    addActive: (items) => {
-        if (!items) return;
-        for (let i = 0; i < items.length; i++) { items[i].style.backgroundColor = ''; items[i].style.color = ''; }
-        if (UI.currentFocus >= items.length) UI.currentFocus = 0; if (UI.currentFocus < 0) UI.currentFocus = (items.length - 1);
-        items[UI.currentFocus].style.backgroundColor = '#eff6ff'; items[UI.currentFocus].style.color = '#2563eb';
-        items[UI.currentFocus].scrollIntoView({ block: 'nearest' });
+        const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
+        
+        let x = document.getElementById(listId);
+        if (x) x = x.getElementsByTagName("div");
+        if (!x || x.length === 0) return;
+
+        if (e.keyCode == 40) { // BAWAH
+            currentFocus++;
+            UI.addActive(x);
+        } else if (e.keyCode == 38) { // ATAS
+            currentFocus--;
+            UI.addActive(x);
+        } else if (e.keyCode == 13) { // ENTER
+            e.preventDefault();
+            if (currentFocus > -1 && x[currentFocus]) x[currentFocus].click();
+        }
     },
 
+    addActive: (x) => {
+        if (!x) return false;
+        // Bersihkan class active dari semua item
+        for (let i = 0; i < x.length; i++) x[i].classList.remove("autocomplete-active");
+
+        if (currentFocus >= x.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = (x.length - 1);
+        
+        x[currentFocus].classList.add("autocomplete-active");
+        x[currentFocus].scrollIntoView({ block: "nearest" });
+    },
+
+removeActive: (x) => {
+    for (let i = 0; i < x.length; i++) {
+        x[i].classList.remove("autocomplete-active");
+    }
+},
+
+    // --- Perbaikan Fungsi selectAuto ---
     selectAuto: (kode, type, formType) => {
-        const ms = DB.get('m') || []; const item = ms.find(x => x.kode === kode); if(!item) return;
+        const ms = DB.get('m') || []; 
+        const item = ms.find(x => x.kode === kode); 
+        if(!item) return;
+
         if (['k', 'n'].includes(type)) { 
-            document.getElementById('t_k').value = item.kode; document.getElementById('t_n').value = item.nama;
-            document.getElementById('t_k_list').style.display = 'none'; document.getElementById('t_n_list').style.display = 'none';
+            // 1. Set Value Utama
+            const elK = document.getElementById('t_k');
+            const elN = document.getElementById('t_n');
+            if(elK) elK.value = item.kode; 
+            if(elN) elN.value = item.nama;
+
+            // 2. Sembunyikan List Dropdown
+            const listK = document.getElementById('t_k_list');
+            const listN = document.getElementById('t_n_list');
+            if(listK) listK.style.display = 'none'; 
+            if(listN) listN.style.display = 'none';
+
+            // 3. Jalankan Sinkronisasi (Data Batch/Stok)
             UI.syncTrx('k', formType);
+
+            // 4. Pindahkan Fokus Kursor (Delay sedikit agar DOM siap)
             setTimeout(() => {
-                if(formType === 'IN') { document.getElementById('t_b').focus(); } 
-                else if (['OUT', 'ADJ'].includes(formType)) { document.getElementById('t_b_sel').focus(); }
-                else if (formType === 'RET') { document.getElementById('t_new_q').focus(); }
+                if(formType === 'IN') { 
+                    const elB = document.getElementById('t_b');
+                    if(elB) elB.focus(); 
+                } 
+                else if (['OUT', 'ADJ'].includes(formType)) { 
+                    const elBSel = document.getElementById('t_b_sel');
+                    if(elBSel) elBSel.focus(); 
+                }
+                else if (formType === 'RET') { 
+                    const elNewQ = document.getElementById('t_new_q');
+                    if(elNewQ) elNewQ.focus(); 
+                }
             }, 50);
+
         } else if (['b_f_k', 'b_f_n'].includes(type)) { 
-            document.getElementById('b_f_kode').value = item.kode; document.getElementById('b_f_nama').value = item.nama;
+            document.getElementById('b_f_kode').value = item.kode; 
+            document.getElementById('b_f_nama').value = item.nama;
             UI.refresh();
         } else { 
-            document.getElementById('l_f_kode').value = item.kode; document.getElementById('l_f_nama').value = item.nama;
+            document.getElementById('l_f_kode').value = item.kode; 
+            document.getElementById('l_f_nama').value = item.nama;
             UI.refresh();
         }
     },
@@ -286,10 +374,18 @@ const UI = {
     },
 
     renderMutasiPivot: (ms, l) => {
-        const selM = document.getElementById('f_mutasi_m'); const selY = document.getElementById('f_mutasi_y');
+        const selM = document.getElementById('f_mutasi_m'); 
+        const selY = document.getElementById('f_mutasi_y');
         if(!selM || !selY) return;
-        const m = parseInt(selM.value), y = parseInt(selY.value), days = new Date(y, m, 0).getDate(), q = document.getElementById('f_mutasi_q').value.toUpperCase();
+
+        const now = new Date();
+        // Baris Kunci: Jika value kosong/NaN, ambil bulan (1-12) dan tahun sekarang
+        const m = selM.value ? parseInt(selM.value) : now.getMonth() + 1;
+        const y = selY.value ? parseInt(selY.value) : now.getFullYear();
         
+        const days = new Date(y, m, 0).getDate(); 
+        const q = (document.getElementById('f_mutasi_q').value || "").toUpperCase();
+// --- Akhir Perubahan ---
         const getArrow = (col) => UI.sortMutasiCol === col ? (UI.sortMutasiAsc ? ' ▲' : ' ▼') : '';
         let h1 = `<tr><th rowspan="2" class="sticky-col k-kode sortable" onclick="UI.sortMutasi('kode')">Kode${getArrow('kode')}</th><th rowspan="2" class="sticky-col k-nama sortable" onclick="UI.sortMutasi('nama')">Nama Barang${getArrow('nama')}</th><th rowspan="2" class="sticky-col k-awal" style="background-color: var(--bg-awal);">Awal</th>`; 
         let h2 = `<tr>`;
@@ -395,7 +491,7 @@ const UI = {
                 <td>${x.batch}</td>
                 <td><b>${displayQty}</b> ${displayQty !== x.qty ? `<br><small style="color:#ef4444">(Ret: ${x.qty - displayQty})</small>` : ''}</td>
                 <td>${x.ket || '-'}</td>
-                <td align="center"><input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify(${l.indexOf(x)})"></td>
+                <td align="center"><input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')"></td>
             </tr>`;
         }).join('');
 // --- Akhir Perubahan ---
@@ -455,22 +551,50 @@ renderExpiry: () => {
         </tr>`;
     }).join('');
 },
+    // --- Perbaikan Fungsi syncTrx ---
     syncTrx: (src, t) => {
         if(src === 'k') {
             const k = document.getElementById('t_k').value;
-            const item = DB.get('m').find(x => x.kode === k); document.getElementById('t_n').value = item ? item.nama : '';
+            const item = DB.get('m').find(x => x.kode === k); 
+            
+            const elNama = document.getElementById('t_n');
+            if(elNama) elNama.value = item ? item.nama : '';
+
             if(t === 'IN') { 
-                 document.getElementById('t_exp').value = '';  
+                 const elExp = document.getElementById('t_exp');
+                 if(elExp) elExp.value = '';  
             } else {
-                const bSelect = document.getElementById('t_b_sel'); const act = Engine.calculate().filter(x => x.kode === k);
-                bSelect.innerHTML = act.length === 0 ? '<option value="">--Kosong--</option>' : '<option value="">--Pilih Batch--</option>' + act.map(x => `<option value="${x.batch}">📦 ${x.batch} (Stok: ${x.stok}) ${x.exp ? ' ⏳ Exp: '+DateHelper.toUI(x.exp) : ''}</option>`).join('');
-                document.getElementById('t_stk_tot').value = act.reduce((a, b) => a + b.stok, 0); document.getElementById('t_q').value = '';
+                const bSelect = document.getElementById('t_b_sel'); 
+                const act = Engine.calculate().filter(x => x.kode === k);
+                
+                if(bSelect) {
+                    bSelect.innerHTML = act.length === 0 ? '<option value="">--Kosong--</option>' : 
+                    '<option value="">--Pilih Batch--</option>' + 
+                    act.map(x => `<option value="${x.batch}">📦 ${x.batch} (Stok: ${x.stok}) ${x.exp ? ' ⏳ Exp: '+DateHelper.toUI(x.exp) : ''}</option>`).join('');
+                }
+
+                // Baris Kunci: Gunakan ?. agar tidak error jika t_stk_tot dihapus (di Form IN)
+                const elStkTot = document.getElementById('t_stk_tot');
+                if(elStkTot) elStkTot.value = act.reduce((a, b) => a + b.stok, 0); 
+                
+                const elQty = document.getElementById('t_q');
+                if(elQty) elQty.value = '';
             }
         } else if (src === 'b') {
-            const k = document.getElementById('t_k').value, b = document.getElementById('t_b_sel').value;
-            if(!k || !b) { document.getElementById('t_stk_b').value = ''; return; }
+            const k = document.getElementById('t_k').value;
+            const b = document.getElementById('t_b_sel')?.value; // Tambah ?.
+            
+            const elStkB = document.getElementById('t_stk_b');
+            if(!k || !b) { 
+                if(elStkB) elStkB.value = ''; 
+                return; 
+            }
+
             const st = Engine.calculate().find(x => x.kode === k && x.batch === b);
-            document.getElementById('t_stk_b').value = st ? st.stok : 0; document.getElementById('t_q').value = ''; document.getElementById('t_q').focus();
+            if(elStkB) elStkB.value = st ? st.stok : 0; 
+            
+            const elQty = document.getElementById('t_q');
+            if(elQty) { elQty.value = ''; elQty.focus(); }
         }
     },
 
@@ -483,6 +607,7 @@ renderExpiry: () => {
         }
     },
 
+   // --- Ganti Bagian openTrx Anda dengan ini ---
     openTrx: (t) => {
         const todayUI = DateHelper.toUI(new Date().toISOString().split('T')[0]);
         const mContent = document.getElementById('trxBody'); mContent.style.padding = '0'; mContent.className = 'modal-content sz-medium';
@@ -492,14 +617,22 @@ renderExpiry: () => {
         if(t === 'RET') {
             h += `<label>Ref Out:</label><div style="display:flex;gap:4px;margin-bottom:5px;"><input id="t_ref_s"><button class="btn-primary" id="btnCariRef" onclick="UI.findRef()">Cari</button></div><select id="t_ret_item" onchange="UI.fillRet()"><option value="">--Cari Ref--</option></select><label>Barang:</label><input id="t_n" readonly class="read-only"><div class="form-row-compact"><div class="f-item"><label>Kode:</label><input id="t_k" readonly class="read-only"></div><div class="f-item"><label>Stok:</label><input id="t_stk_b" readonly class="read-only"></div></div><div class="form-row-compact"><div class="f-item"><label>Qty Lama:</label><input id="t_q_old" readonly class="read-only"></div><div class="f-item"><label>Koreksi Jadi:</label><input id="t_new_q" type="number"></div></div>`;
         } else {
-            h += `<label>Ref:</label><input id="t_ref" value="${t === 'ADJ' ? 'OPNAME-' + new Date().getTime().toString().slice(-4) : ''}"><div style="position:relative;"><label>Barang / Kode:</label><div class="form-row-compact"><div class="f-item" style="flex:2"><input id="t_k" placeholder="Ketik Kode" onkeyup="UI.showAutoList('k', '${t}')" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div><div class="f-item" style="flex:3"><input id="t_n" placeholder="Ketik Nama" onkeyup="UI.showAutoList('n', '${t}')" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div></div></div>`;
-            if(t === 'IN') { h += `<div class="form-row-compact"><div class="f-item"><label>Batch:</label><input id="t_b" onblur="UI.checkBatchIn()"></div><div class="f-item"><label>Expired:</label><input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div></div>`; } 
-            else { h += `<label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')"><option value="">--Pilih Kode Dulu--</option></select>`; }
-            if(t === 'ADJ') h += `<label>Jenis Penyesuaian:</label><select id="t_adj_type"><option value="IN">(+) Tambah Stok (Ditemukan)</option><option value="OUT">(-) Kurangi Stok (Rusak/Hilang)</option></select>`;
-            h += `<div class="form-row-compact"><div class="f-item"><label>Stok${t === 'IN' ? ' Total' : ' (Batch)'}:</label><input id="${t === 'IN' ? 't_stk_tot' : 't_stk_b'}" readonly class="read-only"></div><div class="f-item"><label>Qty Transaksi:</label><input id="t_q" type="number"></div></div>`;
+            h += `<label>Ref:</label><input id="t_ref" value="${t === 'ADJ' ? 'OPNAME-' + new Date().getTime().toString().slice(-4) : ''}"><div style="position:relative;"><label>Barang / Kode:</label><div class="form-row-compact"><div class="f-item" style="flex:2"><input id="t_k" placeholder="Ketik Kode" onkeyup="UI.showAutoList('k', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div><div class="f-item" style="flex:3"><input id="t_n" placeholder="Ketik Nama" onkeyup="UI.showAutoList('n', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div></div></div>`;
+            
+            if(t === 'IN') { 
+                // Form IN: Hanya Batch, Expired, dan Qty
+                h += `<div class="form-row-compact"><div class="f-item"><label>Batch:</label><input id="t_b" onblur="UI.checkBatchIn()"></div><div class="f-item"><label>Expired:</label><input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div></div>`; 
+                h += `<label>Qty Transaksi:</label><input id="t_q" type="number">`;
+            } else { 
+                // Form OUT / ADJ: Tetap ada Stok Batch dan Keterangan
+                h += `<label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')"><option value="">--Pilih Kode Dulu--</option></select>`; 
+                if(t === 'ADJ') h += `<label>Jenis Penyesuaian:</label><select id="t_adj_type"><option value="IN">(+) Tambah Stok (Ditemukan)</option><option value="OUT">(-) Kurangi Stok (Rusak/Hilang)</option></select>`;
+                h += `<div class="form-row-compact"><div class="f-item"><label>Stok (Batch):</label><input id="t_stk_b" readonly class="read-only"></div><div class="f-item"><label>Qty Transaksi:</label><input id="t_q" type="number"></div></div>`;
+                h += `<label>Ket:</label><input id="t_ket">`;
+            }
         }
         
-        h += `<label>Ket:</label><input id="t_ket"><div style="display:flex; gap:5px; margin-top:10px;"><button class="btn-primary" style="flex:1;" onclick="App.prepareSave('${t}')">Lanjut >></button><button class="btn-outline" style="flex:1;" onclick="UI.closeModal('modalTrx')">Batal</button></div></div>`;
+        h += `<div style="display:flex; gap:5px; margin-top:10px;"><button class="btn-primary" style="flex:1;" onclick="App.prepareSave('${t}')">Lanjut >></button><button class="btn-outline" style="flex:1;" onclick="UI.closeModal('modalTrx')">Batal</button></div></div>`;
         mContent.innerHTML = h; UI.showModal('modalTrx'); Draggable.init('trxBody', 'trxHeader');
     },
 
@@ -521,18 +654,11 @@ renderExpiry: () => {
         t.className = 'toast-container';
         t.innerText = msg;
         document.body.appendChild(t);
-        setTimeout(() => t.remove(), 1000); 
+        setTimeout(() => t.remove(), 2000); 
     }
 };
 
 const App = {
-    syncLoad: async () => {
-        const btn = document.querySelector('button[onclick="App.syncLoad()"]');
-        if (btn) { btn.innerText = "Syncing..."; btn.disabled = true; }
-        await DB.load(); 
-        UI.refresh();    
-        if (btn) { btn.innerText = '🔄 Sync'; btn.disabled = false; }
-    },
     
     exportDB: () => {
         const b = new Blob([JSON.stringify({ m: DB.get('m'), l: DB.get('l') })], { type: 'application/json' });
@@ -744,17 +870,24 @@ window.onload = async () => {
         const el = document.getElementById(id); if (el) el.value = DateHelper.toUI(val);
     });
 	
-	// --- TAMBAHKAN KODE INI DI SINI ---
+	// --- PERUBAHAN DI SINI (Baris 360+) ---
+    // 1a. Inisialisasi Dropdown Tahun & Bulan Pivot
     const selY = document.getElementById('f_mutasi_y');
+    const selM = document.getElementById('f_mutasi_m');
+    const now = new Date();
+
     if (selY) {
-        const currentYear = new Date().getFullYear();
-        for (let y = currentYear; y >= currentYear - 5; y--) {
-            const opt = document.createElement('option');
-            opt.value = y; opt.innerText = y;
-            selY.appendChild(opt);
+        const currentYear = now.getFullYear();
+        selY.innerHTML = ""; // Bersihkan dulu
+        for (let y = currentYear; y >= currentYear - 3; y--) {
+            selY.innerHTML += `<option value="${y}">${y}</option>`;
         }
+        selY.value = currentYear; // Set ke tahun ini
     }
-	
+
+    if (selM) {
+        selM.value = now.getMonth() + 1; // Set ke bulan ini (1-12)
+    }
     // 2. Cek Sesi Supabase
     try {
         const { data: { session }, error } = await sb.auth.getSession();
