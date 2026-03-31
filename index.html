@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockMaster Pro v8.31 | Enterprise Edition</title>
+    <title>StockMaster Pro v8.32 | Enterprise Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css?v=8.31">
+    <link rel="stylesheet" href="style.css?v=8.32">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* CSS Tambahan untuk Scroll Pivot */
@@ -76,18 +76,20 @@
         </div>
 
         <div id="tab-day-in" class="tab-pane">
-            <div class="card"><div class="form-row-compact">
-                <div class="f-item"><label>Tgl Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
-                <div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" onkeyup="UI.refresh()"></div>
-            </div></div>
+            <div class="card">
+                <div class="form-row-compact">
+                    <div class="f-item"><label>Tgl Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                    <div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" onkeyup="UI.refresh()"></div>
+                </div>
+            </div>
             <div class="card overflow-x">
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="UI.sortDaily('ref','day-in')">Ref <span id="sort_dayin_ref"></span></th>
-                            <th onclick="UI.sortDaily('kode','day-in')">Kode <span id="sort_dayin_kode"></span></th>
-                            <th onclick="UI.sortDaily('nama','day-in')">Nama <span id="sort_dayin_nama"></span></th>
-                            <th onclick="UI.sortDaily('batch','day-in')">Batch <span id="sort_dayin_batch"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('ref','day-in')">Ref <span id="sort_dayin_ref"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('kode','day-in')">Kode <span id="sort_dayin_kode"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('nama','day-in')">Nama <span id="sort_dayin_nama"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('batch','day-in')">Batch <span id="sort_dayin_batch"></span></th>
                             <th>Qty</th><th>Ket</th><th style="width:80px">Aksi</th>
                         </tr>
                     </thead>
@@ -97,18 +99,20 @@
         </div>
 
         <div id="tab-day-out" class="tab-pane">
-            <div class="card"><div class="form-row-compact">
-                <div class="f-item"><label>Tgl Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
-                <div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" onkeyup="UI.refresh()"></div>
-            </div></div>
+            <div class="card">
+                <div class="form-row-compact">
+                    <div class="f-item"><label>Tgl Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                    <div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" onkeyup="UI.refresh()"></div>
+                </div>
+            </div>
             <div class="card overflow-x">
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="UI.sortDaily('ref','day-out')">Ref <span id="sort_dayout_ref"></span></th>
-                            <th onclick="UI.sortDaily('kode','day-out')">Kode <span id="sort_dayout_kode"></span></th>
-                            <th onclick="UI.sortDaily('nama','day-out')">Nama <span id="sort_dayout_nama"></span></th>
-                            <th onclick="UI.sortDaily('batch','day-out')">Batch <span id="sort_dayout_batch"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('ref','day-out')">Ref <span id="sort_dayout_ref"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('kode','day-out')">Kode <span id="sort_dayout_kode"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('nama','day-out')">Nama <span id="sort_dayout_nama"></span></th>
+                            <th class="sortable" onclick="UI.sortDaily('batch','day-out')">Batch <span id="sort_dayout_batch"></span></th>
                             <th>Qty</th><th>Ket</th><th style="width:80px">Aksi</th>
                         </tr>
                     </thead>
@@ -150,11 +154,13 @@
         </div>
 
         <div id="tab-mutasi" class="tab-pane">
-            <div class="card"><div class="form-row-compact">
-                <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3" selected>Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
-                <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"><option value="2026">2026</option></select></div>
-                <div class="f-item"><label>Cari:</label><input type="text" id="f_mutasi_q" onkeyup="UI.refresh()"></div>
-            </div></div>
+            <div class="card">
+                <div class="form-row-compact">
+                    <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3" selected>Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
+                    <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"><option value="2026">2026</option></select></div>
+                    <div class="f-item"><label>Cari:</label><input type="text" id="f_mutasi_q" onkeyup="UI.refresh()"></div>
+                </div>
+            </div>
             <div class="card pivot-container">
                 <table id="tableMutasi" class="table-pivot">
                     <thead id="mutasiHeader"></thead>
@@ -191,11 +197,30 @@
         </div>
     </main>
 
-    <div id="modalPreview" class="modal" style="display:none;">
+    <div id="modalLogin" class="modal" style="display:none;">
+        <div class="modal-content sz-mini">
+            <h3>Akses Masuk</h3>
+            <select id="loginRole" onchange="UI.loginUX(this.value)">
+                <option value="staff">Staff</option>
+                <option value="admin">Administrator</option>
+            </select>
+            <div id="adminPassArea" style="display:none; margin-top: 10px;">
+                <input type="password" id="adminPass" placeholder="Password Admin..." onkeydown="if(event.key==='Enter') Auth.login()">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-primary" style="flex:1" onclick="Auth.login()">Masuk</button>
+                <button class="btn-outline" style="flex:1; margin-top:0" onclick="UI.closeModal('modalLogin')">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody"></div></div>
+
+    <div id="modalPreview" class="modal" style="display:none; z-index:1100;">
         <div class="modal-content sz-mini" style="padding:0;">
-            <div id="previewHeader" style="background:#f1f5f9; padding:10px; font-weight:bold;">Kroscek Data</div>
+            <div id="previewHeader" style="background:#f1f5f9; padding:10px; font-weight:bold; border-radius:8px 8px 0 0;">Kroscek Data</div>
             <div style="padding:15px;">
-                <div id="previewContent" style="margin-bottom:15px; border:1px dashed #ccc; padding:10px;"></div>
+                <div id="previewContent" style="margin-bottom:15px; border:1px dashed #cbd5e0; padding:10px; font-size:13px;"></div>
                 <div style="display:flex; gap:10px;">
                     <button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()">Simpan (Enter)</button>
                     <button class="btn-outline" onclick="UI.closeModal('modalPreview')">Batal Edit</button>
@@ -204,6 +229,30 @@
         </div>
     </div>
 
-    <script src="script.js?v=8.31"></script>
+    <div id="modalMaster" class="modal">
+        <div class="modal-content sz-mini">
+            <h3 id="masterTitle">Master Barang</h3>
+            <input type="hidden" id="m_k_old">
+            <label>Kode Barang:</label><input id="m_k" placeholder="FKxxx">
+            <label>Nama Barang:</label><input id="m_n">
+            <label>Masa Simpan (Hari):</label><input id="m_m" type="number" placeholder="Contoh: 365">
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button class="btn-primary" style="flex:1;" onclick="App.saveMaster()">💾 Simpan</button>
+                <button class="btn-outline" style="flex:1; margin-top:0;" onclick="UI.closeModal('modalMaster')">Batal</button>
+            </div>
+            <button id="btnHapusMaster" class="btn-danger" style="display:none; margin-top:10px;" onclick="App.deleteMaster()">🗑️ Hapus Database</button>
+        </div>
+    </div>
+    
+    <div id="modalImport" class="modal">
+        <div class="modal-content sz-large">
+            <h3>Import Massal</h3>
+            <textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea>
+            <button class="btn-primary" onclick="App.saveImport()">Import</button>
+            <button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button>
+        </div>
+    </div>
+
+    <script src="script.js?v=8.32"></script>
 </body>
 </html>
