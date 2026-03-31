@@ -620,6 +620,11 @@ removeActive: (x) => {
         const bodyEl = document.getElementById(bodyId);
         if (!bodyEl) return;
 
+        // --- SISIPAN LOGIKA ROLE ADMIN ---
+        const currentUser = DB.get('currentUser') || JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const isAdmin = currentUser.role === 'admin';
+        // ---------------------------------
+
         bodyEl.innerHTML = filtered.map(x => {
             const m = ms.find(i => i.kode === x.kode);
             let dQty = x.qty;
@@ -627,6 +632,9 @@ removeActive: (x) => {
                 const totalRet = l.filter(r => r.ref === x.ref + "-RET").reduce((a, b) => a + b.qty, 0);
                 dQty = x.qty - totalRet;
             }
+
+            // KONDISI TOMBOL: Hanya render tombol hapus jika Admin
+            const btnDelete = isAdmin ? `<button onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; color:#dc2626;" title="Hapus Data">🗑️</button>` : '';
 
             return `
                 <tr class="${x.v ? 'is-verified' : ''}">
@@ -639,7 +647,7 @@ removeActive: (x) => {
                     <td align="center">
                         <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
                             <input type="checkbox" ${x.v ? 'checked' : ''} style=" cursor:pointer" onchange="UI.toggleVerify('${x.id}')">
-                            <button onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; color:#dc2626;">🗑️</button>
+                            ${btnDelete}
                         </div>
                     </td>
                 </tr>`;
@@ -663,13 +671,17 @@ removeActive: (x) => {
         const body = document.getElementById('logTableBody');
         if (!body) return;
 
-        // 1. Ambil Nilai Filter dari Inputan di Layar
+        // 1. CEK ROLE USER (Mendukung dari DB lokal maupun localStorage)
+        const currentUser = DB.get('currentUser') || JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const isAdmin = currentUser.role === 'admin';
+
+        // 2. Ambil Nilai Filter dari Inputan di Layar
         const t1 = DateHelper.toDB(document.getElementById('f_tgl_1')?.value || '');
         const t2 = DateHelper.toDB(document.getElementById('f_tgl_2')?.value || '');
         const qK = document.getElementById('l_f_kode')?.value.toUpperCase() || '';
         const tipe = document.getElementById('f_tipe')?.value || 'ALL';
 
-        // 2. Proses Menyaring Data
+        // 3. Proses Menyaring Data
         const filtered = l.filter(x => {
             const isDate = (t1 && t2) ? (x.tgl >= t1 && x.tgl <= t2) : true;
             const isKode = qK ? x.kode.toUpperCase().includes(qK) : true;
@@ -677,18 +689,18 @@ removeActive: (x) => {
             return isDate && isKode && isTipe;
         });
 
-        // 3. Masukkan Data ke Dalam Tabel
+        // 4. Masukkan Data ke Dalam Tabel
         body.innerHTML = filtered.reverse().map(x => {
             const m = ms.find(i => i.kode === x.kode);
             let tColor = x.tipe === 'IN' ? 'txt-m' : (x.tipe === 'OUT' ? 'txt-k' : '');
             
-            // Membuat Tombol Edit (Pensil) dan Hapus (Tong Sampah)
-            const actionBtns = `
+            // 5. KONDISI TOMBOL: Jika Admin render tombol, jika bukan beri tanda strip
+            const actionBtns = isAdmin ? `
                 <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
                     <button type="button" onclick="App.editLog('${x.id}')" style="background:none; border:none; cursor:pointer; font-size:16px; color:#2563eb;" title="Edit Data">✏️</button>
                     <button type="button" onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; font-size:16px; color:#dc2626;" title="Hapus Data">🗑️</button>
                 </div>
-            `;
+            ` : `<span style="color:#94a3b8; font-weight:bold;">-</span>`;
 
             return `
                 <tr>
