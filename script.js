@@ -269,25 +269,32 @@ const UI = {
         listEl.style.display = 'block';
     },
 
-    handleAutoKey: (e, type, formType) => {
-        const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
-        const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
-        
-        let x = document.getElementById(listId);
-        if (x) x = x.getElementsByTagName("div");
-        if (!x || x.length === 0) return;
+    // --- Perbaikan handleAutoKey ---
+handleAutoKey: (e, type, formType) => {
+    const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
+    const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
+    
+    let x = document.getElementById(listId);
+    if (x) x = x.getElementsByTagName("div");
+    if (!x || x.length === 0) return;
 
-        if (e.keyCode == 40) { // BAWAH
-            currentFocus++;
-            UI.addActive(x);
-        } else if (e.keyCode == 38) { // ATAS
-            currentFocus--;
-            UI.addActive(x);
-        } else if (e.keyCode == 13) { // ENTER
-            e.preventDefault();
-            if (currentFocus > -1 && x[currentFocus]) x[currentFocus].click();
+    if (e.keyCode == 40) { // BAWAH
+        currentFocus++;
+        UI.addActive(x);
+    } else if (e.keyCode == 38) { // ATAS
+        currentFocus--;
+        UI.addActive(x);
+    } else if (e.keyCode == 13 || e.keyCode == 9) { // ENTER atau TAB
+        e.preventDefault();
+        
+        // Logika: Jika tidak ada yang disorot (currentFocus -1), pilih index 0 (paling atas)
+        let targetIndex = currentFocus > -1 ? currentFocus : 0;
+        
+        if (x[targetIndex]) {
+            x[targetIndex].click(); // Pilih item
         }
-    },
+    }
+},
 
     addActive: (x) => {
         if (!x) return false;
@@ -661,23 +668,32 @@ renderExpiry: () => {
         const todayUI = DateHelper.toUI(new Date().toISOString().split('T')[0]);
         const mContent = document.getElementById('trxBody'); mContent.style.padding = '0'; mContent.className = 'modal-content sz-medium';
         let h = `<div id="trxHeader" style="cursor:grab; background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--s);"><span>Form ${t}</span><span style="font-size:14px; color:#64748b;">✥</span></div><div style="padding: 15px; display:flex; flex-direction:column;">`;
-        h += `<label>Tgl:</label><input type="text" id="t_tgl" value="${todayUI}" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)">`;
+        h += `<label>Tgl:</label><input type="text" id="t_tgl" value="${todayUI}" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)" onkeydown="if(event.keyCode==13) document.getElementById('t_ref').focus()">`;
         
         if(t === 'RET') {
-            h += `<label>Ref Out:</label><div style="display:flex;gap:4px;margin-bottom:5px;"><input id="t_ref_s"><button class="btn-primary" id="btnCariRef" onclick="UI.findRef()">Cari</button></div><select id="t_ret_item" onchange="UI.fillRet()"><option value="">--Cari Ref--</option></select><label>Barang:</label><input id="t_n" readonly class="read-only"><div class="form-row-compact"><div class="f-item"><label>Kode:</label><input id="t_k" readonly class="read-only"></div><div class="f-item"><label>Stok:</label><input id="t_stk_b" readonly class="read-only"></div></div><div class="form-row-compact"><div class="f-item"><label>Qty Lama:</label><input id="t_q_old" readonly class="read-only"></div><div class="f-item"><label>Koreksi Jadi:</label><input id="t_new_q" type="number"></div></div>`;
+            h += `<label>Ref Out:</label><div style="display:flex;gap:4px;margin-bottom:5px;"><input id="t_ref_s"><button class="btn-primary" id="btnCariRef" onclick="UI.findRef()">Cari</button></div><select id="t_ret_item" onchange="UI.fillRet()"><option value="">--Cari Ref--</option></select><label>Barang:</label><input id="t_n" readonly class="read-only"><div class="form-row-compact"><div class="f-item"><label>Kode:</label><input id="t_k" readonly class="read-only"></div><div class="f-item"><label>Stok:</label><input id="t_stk_b" readonly class="read-only"></div></div><div class="form-row-compact"><div class="f-item"><label>Qty Lama:</label><input id="t_q_old" readonly class="read-only"></div><div class="f-item"><label>Koreksi Jadi:</label><input id="t_new_q" type="number" onkeydown="if(event.keyCode==13) App.prepareSave('${t}')"></div></div>`;
         } else {
-            h += `<label>Ref:</label><input id="t_ref" value="${t === 'ADJ' ? 'OPNAME-' + new Date().getTime().toString().slice(-4) : ''}"><div style="position:relative;"><label>Barang / Kode:</label><div class="form-row-compact"><div class="f-item" style="flex:2"><input id="t_k" placeholder="Ketik Kode" onkeyup="UI.showAutoList('k', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div><div class="f-item" style="flex:3"><input id="t_n" placeholder="Ketik Nama" onkeyup="UI.showAutoList('n', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div></div></div>`;
+            h += `<label>Ref:</label><input id="t_ref" value="${t === 'ADJ' ? 'OPNAME-' + new Date().getTime().toString().slice(-4) : ''}" onkeydown="if(event.keyCode==13) document.getElementById('t_k').focus()"><div style="position:relative;"><label>Barang / Kode:</label><div class="form-row-compact"><div class="f-item" style="flex:2"><input id="t_k" placeholder="Ketik Kode" onkeyup="UI.showAutoList('k', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div><div class="f-item" style="flex:3"><input id="t_n" placeholder="Ketik Nama" onkeyup="UI.showAutoList('n', '${t}', event)" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div></div></div>`;
             
             if(t === 'IN') { 
-                // Form IN: Hanya Batch, Expired, dan Qty
-                h += `<div class="form-row-compact"><div class="f-item"><label>Batch:</label><input id="t_b" onblur="UI.checkBatchIn()"></div><div class="f-item"><label>Expired:</label><input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div></div>`; 
-                h += `<label>Qty Transaksi:</label><input id="t_q" type="number">`;
+                // Form IN: Hanya Batch, Qty, dan Expired (Tanpa Keterangan)
+                h += `<label>Batch:</label><input id="t_b" onblur="UI.checkBatchIn()" onkeydown="if(event.keyCode==13) document.getElementById('t_q').focus()">`;
+                h += `<div class="form-row-compact">
+                        <div class="f-item">
+                            <label>Qty:</label>
+                            <input id="t_q" type="number" onkeydown="if(event.keyCode==13) document.getElementById('t_exp').focus()">
+                        </div>
+                        <div class="f-item">
+                            <label>Expired:</label>
+                            <input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)" onkeydown="if(event.keyCode==13) App.prepareSave('${t}')">
+                        </div>
+                      </div>`;
             } else { 
-                // Form OUT / ADJ: Tetap ada Stok Batch dan Keterangan
+                // Form OUT / ADJ
                 h += `<label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')"><option value="">--Pilih Kode Dulu--</option></select>`; 
                 if(t === 'ADJ') h += `<label>Jenis Penyesuaian:</label><select id="t_adj_type"><option value="IN">(+) Tambah Stok (Ditemukan)</option><option value="OUT">(-) Kurangi Stok (Rusak/Hilang)</option></select>`;
-                h += `<div class="form-row-compact"><div class="f-item"><label>Stok (Batch):</label><input id="t_stk_b" readonly class="read-only"></div><div class="f-item"><label>Qty Transaksi:</label><input id="t_q" type="number"></div></div>`;
-                h += `<label>Ket:</label><input id="t_ket">`;
+                h += `<div class="form-row-compact"><div class="f-item"><label>Stok (Batch):</label><input id="t_stk_b" readonly class="read-only"></div><div class="f-item"><label>Qty Transaksi:</label><input id="t_q" type="number" onkeydown="if(event.keyCode==13) document.getElementById('t_ket').focus()"></div></div>`;
+                h += `<label>Ket:</label><input id="t_ket" onkeydown="if(event.keyCode==13) App.prepareSave('${t}')">`;
             }
         }
         
