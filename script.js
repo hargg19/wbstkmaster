@@ -704,6 +704,19 @@ renderExpiry: () => {
         t.innerText = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2000); 
+    },
+	// Tambahkan di dalam UI: { ... }
+    handlePreviewKey: (e) => {
+        const modal = document.getElementById('modalPreview');
+        // Hanya jalan jika modal Preview sedang tampil (display block)
+        if (modal && modal.style.display === 'block') {
+            if (e.keyCode === 13) { 
+                e.preventDefault();
+                App.executeSave(); // Panggil fungsi simpan permanen
+            } else if (e.keyCode === 27) {
+                UI.closeModal('modalPreview'); // Opsional: Esc untuk batal
+            }
+        }
     }
 };
 
@@ -744,7 +757,7 @@ const App = {
         UI.showModal('modalMaster');
     },
 
-    saveMaster: async () => {
+saveMaster: async () => {
         const k = document.getElementById('m_k').value.trim().toUpperCase();
         const n = document.getElementById('m_n').value.trim();
         const m = document.getElementById('m_m').value;
@@ -815,7 +828,6 @@ const App = {
         const tglRaw = document.getElementById('t_tgl')?.value || ""; 
         const tglDB = DateHelper.toDB(tglRaw);
         
-        // 1. Validasi Dasar
         if(!tglDB || tglDB.length !== 10) { alert("Format Tanggal tidak valid! (DD-MM-YYYY)"); return; }
         const expRaw = document.getElementById('t_exp')?.value.trim() || ""; 
         let expDB = DateHelper.toDB(expRaw);
@@ -824,7 +836,6 @@ const App = {
         
         let previewHTML = "";
         
-        // 2. Logika Khusus Tipe RETURN (RET)
         if(t === 'RET') {
             const rData = document.getElementById('t_ret_item').value; 
             if(!rData) return;
@@ -835,7 +846,6 @@ const App = {
             if(q === oldQ) { alert("Qty baru sama dengan yang lama, tidak ada perubahan."); return; }
             
             const selisih = oldQ - q;
-            // Return disimpan sebagai tipe IN agar menambah stok kembali
             window.pendingData = { 
                 tgl: tglDB, ref: refLog.ref + "-RET", kode: refLog.kode, 
                 batch: refLog.batch, exp: refLog.exp, qty: selisih, 
@@ -843,10 +853,7 @@ const App = {
             };
             
             previewHTML = `<b>TIPE:</b> RETURN / KOREKSI<br><b>Ref Awal:</b> ${refLog.ref}<br><b>Kode:</b> ${refLog.kode}<br><b>Qty Kembali ke Stok:</b> ${selisih}`;
-        } 
-        
-        // 3. Logika Umum (IN, OUT, ADJ)
-        else {
+        } else {
             const ref = document.getElementById('t_ref').value.trim(); 
             const kode = document.getElementById('t_k').value.toUpperCase();
             const masterItem = ms.find(x => x.kode === kode); 
@@ -856,15 +863,12 @@ const App = {
             
             const batch = (t === 'IN') ? document.getElementById('t_b').value : document.getElementById('t_b_sel').value;
             
-            // Tentukan Tipe Data untuk Database
             let trType = (t === 'IN') ? 'IN' : 'OUT'; 
             let finalQty = q;
 
-            // Logika Khusus STOK OPNAME (ADJ)
             if (t === 'ADJ') {
-                trType = 'ADJ'; // Tetapkan ADJ agar Pivot bisa membedakan
+                trType = 'ADJ';
                 const adjType = document.getElementById('t_adj_type').value;
-                // Jika "Kurangi", paksa Qty jadi Negatif
                 finalQty = (adjType === 'OUT') ? -Math.abs(q) : Math.abs(q);
             }
 
@@ -873,7 +877,6 @@ const App = {
                 exp: expDB, qty: finalQty, tipe: trType, ket, t: t 
             };
             
-            // Label Tampilan untuk Preview
             let labelAct = t === 'ADJ' ? (finalQty > 0 ? 'STOK OPNAME (TAMBAH)' : 'STOK OPNAME (KURANGI)') : t;
             
             previewHTML = `
@@ -891,12 +894,10 @@ const App = {
                 </table>`;
         }
         
-        // Render ke Modal Preview
         document.getElementById('previewContent').innerHTML = previewHTML;
         UI.showModal('modalPreview');
     },
 
-    // --- GANTI FUNGSI EXECUTESAVE LAMA ANDA DENGAN INI ---
     executeSave: async () => {
         if (!window.pendingData) return;
         const btn = document.getElementById('btnConfirmSave');
@@ -917,30 +918,21 @@ const App = {
 
             if (error) throw error;
 
-            // 1. Tutup modal Preview (Kroscek)
             UI.closeModal('modalPreview'); 
-
-            // 2. Refresh data Supabase & UI
             await DB.load(); 
             UI.refresh();
 
-            // 3. Tampilkan Toast 1 detik
             UI.showToast("✅ Data Tersimpan!");
 
-            // 4. Bersihkan SEMUA field input (Penting untuk Form OUT agar bersih)
             const idsToClear = ['t_k', 't_n', 't_q', 't_new_q', 't_b', 't_stk_b', 't_stk_tot', 't_ket', 't_exp'];
             idsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
 
-            // 5. Reset Dropdown Batch (Khusus Form OUT)
             const selBatch = document.getElementById('t_b_sel');
-            if (selBatch) {
-                selBatch.innerHTML = '<option value="">--Pilih Kode Dulu--</option>';
-            }
+            if (selBatch) selBatch.innerHTML = '<option value="">--Pilih Kode Dulu--</option>';
 
-            // 6. Kembalikan fokus ke Kode Barang (Langsung bisa ketik item baru)
             const inputKode = document.getElementById('t_k');
             if (inputKode) inputKode.focus();
 
@@ -950,8 +942,35 @@ const App = {
             if (btn) { btn.innerText = 'Simpan'; btn.disabled = false; } 
             window.pendingData = null; 
         }
+    },
+
+    // --- FUNGSI INIT BARU ---
+    init: async () => {
+        console.log("App Initializing...");
+        
+        // Listener Enter untuk Simpan di Preview, Esc untuk Batal
+        window.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('modalPreview');
+            if (modal && modal.style.display === 'block') {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    App.executeSave();
+                } else if (e.key === 'Escape') {
+                    UI.closeModal('modalPreview');
+                }
+            }
+        });
+
+        // Load data awal dari Supabase
+        await DB.load();
+        UI.refresh();
     }
 };
+
+// Pastikan dipanggil saat halaman siap
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
 
 window.onload = async () => {
     const t = new Date();
