@@ -556,10 +556,10 @@ removeActive: (x) => {
     renderDaily: (id, tipe, ms, l) => {
         // 1. Cek apakah Tab Pane ada
         const pane = document.getElementById('tab-' + id);
-        if (!pane) return; // Keluar jika ID tab tidak ditemukan
+        if (!pane) return; 
         if (!pane.classList.contains('active')) return;
 
-        // 2. Sesuaikan ID Input (Coba kedua kemungkinan: dengan atau tanpa underscore)
+        // 2. Sesuaikan ID Input
         const baseID = id.replace('-', '_'); // day_in
         const altID = id.replace('-', '');   // dayin
         
@@ -585,12 +585,10 @@ removeActive: (x) => {
             return isMatch && isSearch && isNotAdj && isNotReturn;
         });
 
+        // 4. Urutkan Data
         filtered.sort((a, b) => {
-            // A. Prioritas 1: Status Verified (x.v)
-            // false (0) akan di atas, true (1) akan di bawah
             if (a.v !== b.v) return a.v ? 1 : -1;
 
-            // B. Prioritas 2: Kolom yang dipilih (Nama, Ref, Kode, dll)
             let col = UI.sortDailyCol || 'ref';
             let vA, vB;
             
@@ -610,20 +608,18 @@ removeActive: (x) => {
         // 5. Update Indikator Panah di Header
         const cols = ['ref', 'kode', 'nama', 'batch'];
         cols.forEach(c => {
-            // Cek ID sort (dayin atau day_in)
             const sortEl = document.getElementById(`sort_${baseID}_${c}`) || document.getElementById(`sort_${altID}_${c}`);
             if (sortEl) sortEl.innerHTML = (UI.sortDailyCol === c) ? (UI.sortDailyAsc ? ' ▲' : ' ▼') : '';
         });
 
         // 6. Render ke Table Body
-        const bodyId = `${altID}TableBody`; // dayinTableBody
+        const bodyId = `${altID}TableBody`; 
         const bodyEl = document.getElementById(bodyId);
         if (!bodyEl) return;
 
-        // --- SISIPAN LOGIKA ROLE ADMIN ---
+        // --- CEK ROLE USER ---
         const currentUser = DB.get('currentUser') || JSON.parse(localStorage.getItem('currentUser') || '{}');
         const isAdmin = currentUser.role === 'admin';
-        // ---------------------------------
 
         bodyEl.innerHTML = filtered.map(x => {
             const m = ms.find(i => i.kode === x.kode);
@@ -633,8 +629,13 @@ removeActive: (x) => {
                 dQty = x.qty - totalRet;
             }
 
-            // KONDISI TOMBOL: Hanya render tombol hapus jika Admin
-            const btnDelete = isAdmin ? `<button onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; color:#dc2626;" title="Hapus Data">🗑️</button>` : '';
+            // KONDISI AKSI: Admin dapat Checkbox & Hapus, Staff hanya lihat indikator
+            const actionArea = isAdmin ? `
+                <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
+                    <input type="checkbox" ${x.v ? 'checked' : ''} style="cursor:pointer" onchange="UI.toggleVerify('${x.id}')">
+                    <button type="button" onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; color:#dc2626;" title="Hapus Data">🗑️</button>
+                </div>
+            ` : (x.v ? `<span style="color:#16a34a; font-weight:bold;">✅ Verif</span>` : `<span style="color:#94a3b8; font-weight:bold;">-</span>`);
 
             return `
                 <tr class="${x.v ? 'is-verified' : ''}">
@@ -644,12 +645,7 @@ removeActive: (x) => {
                     <td>${x.batch || '-'}</td>
                     <td><b>${dQty}</b> ${dQty !== x.qty ? `<br><small style="color:red">(Ret: ${x.qty - dQty})</small>` : ''}</td>
                     <td>${x.ket || '-'}</td>
-                    <td align="center">
-                        <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
-                            <input type="checkbox" ${x.v ? 'checked' : ''} style=" cursor:pointer" onchange="UI.toggleVerify('${x.id}')">
-                            ${btnDelete}
-                        </div>
-                    </td>
+                    <td align="center">${actionArea}</td>
                 </tr>`;
         }).join('');
     },
