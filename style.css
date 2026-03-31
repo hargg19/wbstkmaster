@@ -54,7 +54,7 @@ body.admin-mode .sidebar { display: flex; }
 .tab-pane.active { display: block !important; }
 
 /* TABLES & CARDS */
-.card { background: rgb(221, 221, 221); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.226); margin-bottom: 12px; }
+.card { background: rgb(221, 221, 221); padding: 4px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.247); margin-bottom: 12px; }
 .overflow-x { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
@@ -144,12 +144,12 @@ body.dark-mode {
 }
 body.dark-mode .sidebar { background-color: #1e293b; border-right: 1px solid #334155; }
 body.dark-mode .nav-item:hover { background-color: #334155; }
-body.dark-mode .card, body.dark-mode .modal-content {background-color: #141d2c;border: 1px solid #3d5e8e;color: #e2e8f0;}
+body.dark-mode .card, body.dark-mode .modal-content {background-color: #141d2c;border: 1px solid #3d5e8e;color: #ffffff;}
 body.dark-mode table th { background-color: #0f172a; color: #94a3b8; border-color: #334155; }
 body.dark-mode table td, body.dark-mode .modal-content td { border-color: #334155; color: #cbd5e1; }
 body.dark-mode tr:nth-child(even) { background-color: #1e293b; }
 body.dark-mode tr:hover { background-color: #334155; }
-body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #253355; color: #e2e8f0; border-color: #475569; }
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #253355; color: #ffffff; border-color: #5b6574; }
 body.dark-mode .read-only {background-color: #243053;}
 body.dark-mode .autocomplete-items { background-color: #1e293b; border-color: #475569; }
 body.dark-mode .autocomplete-items div { border-bottom: 1px solid #515f72; color: #c6c6c7; }
@@ -283,4 +283,26 @@ body.dark-mode .k-awal {
 }
 .btn-icon:hover {
     background: #fee2e2; /* Merah muda halus */
+}
+
+/* CSS untuk merapikan kolom Aksi (Checkbox + Tombol Bin) */
+.action-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-bin {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-bin:hover {
+    background: #fee2e2;
 }
