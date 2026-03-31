@@ -3,10 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockMaster Pro v8.27 | Enterprise Edition</title>
+    <title>StockMaster Pro v8.31 | Enterprise Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css?v=8.27">
+    <link rel="stylesheet" href="style.css?v=8.31">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* CSS Tambahan untuk Scroll Pivot */
+        .pivot-container { width: 100%; max-height: 75vh; overflow: auto; position: relative; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .table-pivot { min-width: 1500px; border-collapse: separate; border-spacing: 0; }
+        .table-pivot thead th { position: sticky; top: 0; z-index: 10; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .table-pivot tbody td:first-child, .table-pivot thead th:first-child { position: sticky; left: 0; z-index: 11; background: #fff; border-right: 2px solid #e2e8f0; }
+    </style>
 </head>
 <body class="is-public">
 
@@ -16,29 +23,14 @@
             <button class="toggle-btn" onclick="UI.toggleSidebar()">≡</button>
         </div>
         <div class="nav-menu">
-            <div class="nav-item" onclick="App.openMasterAdd()" title="Database Barang">
-                <span class="icon">📦</span> <span class="nav-text">Database Barang</span>
-            </div>
-            <div class="nav-item" onclick="UI.showModal('modalImport')" title="Import Massal">
-                <span class="icon">📥</span> <span class="nav-text">Import Massal</span>
-            </div>
-            <div class="nav-item" onclick="UI.openTrx('IN')" title="Barang Masuk">
-                <span class="icon">🟢</span> <span class="nav-text">Barang Masuk</span>
-            </div>
-            <div class="nav-item" onclick="UI.openTrx('OUT')" title="Barang Keluar">
-                <span class="icon">🔴</span> <span class="nav-text">Barang Keluar</span>
-            </div>
-            <div class="nav-item" onclick="UI.openTrx('ADJ')" title="Stok Opname">
-                <span class="icon">🔧</span> <span class="nav-text">Stok Opname</span>
-            </div>
-            <div class="nav-item" onclick="UI.openTrx('RET')" title="Koreksi Return">
-                <span class="icon">🔄</span> <span class="nav-text">Koreksi Return</span>
-            </div>
+            <div class="nav-item" onclick="App.openMasterAdd()"> <span class="icon">📦</span> <span class="nav-text">Database Barang</span> </div>
+            <div class="nav-item" onclick="UI.showModal('modalImport')"> <span class="icon">📥</span> <span class="nav-text">Import Massal</span> </div>
+            <div class="nav-item" onclick="UI.openTrx('IN')"> <span class="icon">🟢</span> <span class="nav-text">Barang Masuk</span> </div>
+            <div class="nav-item" onclick="UI.openTrx('OUT')"> <span class="icon">🔴</span> <span class="nav-text">Barang Keluar</span> </div>
+            <div class="nav-item" onclick="UI.openTrx('ADJ')"> <span class="icon">🔧</span> <span class="nav-text">Stok Opname</span> </div>
+            <div class="nav-item" onclick="UI.openTrx('RET')"> <span class="icon">🔄</span> <span class="nav-text">Koreksi Return</span> </div>
             <hr class="nav-divider">
-            <div class="nav-item" onclick="App.exportDB()" title="Backup Database Lokal" style="color:#60a5fa">
-                <span class="icon">💾</span> <span class="nav-text">Backup Lokal (Manual)</span>
-            </div>
-            <input type="file" id="dbFile" style="display:none" onchange="App.importDB(this)">
+            <div class="nav-item" onclick="App.exportDB()" style="color:#60a5fa"> <span class="icon">💾</span> <span class="nav-text">Backup Lokal</span> </div>
         </div>
     </nav>
 
@@ -46,19 +38,17 @@
         <div class="top-nav-container">
             <div id="tab-nav" class="tab-menu">
                 <button class="tab-btn active" onclick="UI.switchTab('stok', this)">📦 Stok</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('day-in', this)">📥 Masuk</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('day-out', this)">📤 Keluar</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('mutasi', this)">📊 Mutasi Pivot</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('batch', this)">🗂️ Batch Viewer</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('log', this)">📜 Log Transaksi</button>
-                <button class="tab-btn private" style="display:none; color:#d97706;" onclick="UI.switchTab('expiry', this)">⚠️ Near Expired</button>
+                <button class="tab-btn" onclick="UI.switchTab('day-in', this)">📥 Masuk</button>
+                <button class="tab-btn" onclick="UI.switchTab('day-out', this)">📤 Keluar</button>
+                <button class="tab-btn" onclick="UI.switchTab('batch', this)">🗂️ Batch Viewer</button>
+                <button class="tab-btn" onclick="UI.switchTab('mutasi', this)">📊 Mutasi Pivot</button>
+                <button class="tab-btn" onclick="UI.switchTab('log', this)">📜 Log Transaksi</button>
             </div>
             
             <div class="auth-group">
-                <button id="btnTheme" class="btn-outline" style="margin-top: 0;" onclick="UI.toggleTheme()">🌙</button>
-                <button id="btnExportExcel" class="btn-export private" style="display:none" onclick="App.exportToExcel()">Export</button>
+                <button id="btnTheme" class="btn-outline" onclick="UI.toggleTheme()">🌙</button>
                 <button id="btnAuth" class="btn-primary" onclick="UI.openLogin()">Login</button>
-                <button id="btnLogout" class="btn-logout" onclick="Auth.logout()">Logout</button>
+                <button id="btnLogout" class="btn-logout" style="display:none" onclick="Auth.logout()">Logout</button>
             </div>
         </div>
 
@@ -68,73 +58,152 @@
             </div>
         </header>
 
-        <div id="tab-stok" class="tab-pane active"><div class="card overflow-x"><table><thead><tr><th width="20%" class="sortable" onclick="UI.sortStok('kode')">Kode <span id="sort_kode">▲</span></th><th class="sortable" onclick="UI.sortStok('nama')">Nama Barang <span id="sort_nama"></span></th><th width="15%" class="sortable" onclick="UI.sortStok('stok')">Saldo <span id="sort_stok"></span></th><th>Status</th><th id="th_aksi" style="display:none; width:80px;">Aksi</th></tr></thead><tbody id="inventoryBody"></tbody></table></div></div>
-        
-        <div id="tab-expiry" class="tab-pane"><div class="card overflow-x"><table><thead><tr><th width="15%">Kode</th><th>Nama Barang</th><th width="15%">Batch</th><th width="10%">Stok</th><th width="15%">Exp Date</th><th width="10%">Masa Max</th><th width="25%">Status Peringatan</th></tr></thead><tbody id="expiryTableBody"></tbody></table></div></div>
-        
-        <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayinTableBody"></tbody></table></div></div>
-        <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="dayoutTableBody"></tbody></table></div></div>
-        
-        <div id="tab-mutasi" class="tab-pane"><div class="card"><div class="form-row-compact">
-            <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
-            <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"></select></div>
-            <div class="f-item"><label>Filter Produk:</label><input type="text" id="f_mutasi_q" placeholder="Cari..." onkeyup="UI.refresh()"></div>
-        </div></div><div class="card overflow-x" style="max-height: 70vh;"><table id="tableMutasi" class="table-pivot"><thead id="mutasiHeader"></thead><tbody id="mutasiTableBody"></tbody></table></div></div>
-        
-        <div id="tab-batch" class="tab-pane">
-            <div class="card"><div class="batch-filter-grid">
-                <div class="f-item"><label>Kode Barang:</label><div style="position:relative;"><input type="text" id="b_f_kode" oninput="UI.showAutoList('b_f_k')" onfocus="UI.showAutoList('b_f_k')" onkeydown="UI.handleAutoKey(event, 'b_f_k')" autocomplete="off" placeholder="Pilih Kode..."><div id="b_f_k_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Nama Barang:</label><div style="position:relative;"><input type="text" id="b_f_nama" oninput="UI.showAutoList('b_f_n')" onfocus="UI.showAutoList('b_f_n')" onkeydown="UI.handleAutoKey(event, 'b_f_n')" autocomplete="off" placeholder="Pilih Nama..."><div id="b_f_n_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Total Stok:</label><input type="text" id="b_f_stok" readonly class="read-only" style="text-align:center; font-size:14px;"></div><div class="f-item"><label>Aksi:</label><div style="display:flex; gap:5px;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('batch')">Reset</button></div></div>
+        <div id="tab-stok" class="tab-pane active">
+            <div class="card overflow-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="UI.sortStok('kode')">Kode <span id="sort_kode">▲</span></th>
+                            <th class="sortable" onclick="UI.sortStok('nama')">Nama Barang <span id="sort_nama"></span></th>
+                            <th class="sortable" onclick="UI.sortStok('stok')">Saldo <span id="sort_stok"></span></th>
+                            <th>Status</th>
+                            <th id="th_aksi_stok" style="display:none; width:80px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-day-in" class="tab-pane">
+            <div class="card"><div class="form-row-compact">
+                <div class="f-item"><label>Tgl Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                <div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" onkeyup="UI.refresh()"></div>
             </div></div>
-            <div class="card overflow-x"><table><thead><tr><th width="20%">Kode</th><th>Nama Barang</th><th width="20%">No. Batch</th><th width="15%">Exp Date</th><th width="15%">Stok Tersedia</th></tr></thead><tbody id="batchContainer"></tbody></table></div>
+            <div class="card overflow-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="UI.sortDaily('ref','day-in')">Ref <span id="sort_dayin_ref"></span></th>
+                            <th onclick="UI.sortDaily('kode','day-in')">Kode <span id="sort_dayin_kode"></span></th>
+                            <th onclick="UI.sortDaily('nama','day-in')">Nama <span id="sort_dayin_nama"></span></th>
+                            <th onclick="UI.sortDaily('batch','day-in')">Batch <span id="sort_dayin_batch"></span></th>
+                            <th>Qty</th><th>Ket</th><th style="width:80px">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dayinTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-day-out" class="tab-pane">
+            <div class="card"><div class="form-row-compact">
+                <div class="f-item"><label>Tgl Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                <div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" onkeyup="UI.refresh()"></div>
+            </div></div>
+            <div class="card overflow-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="UI.sortDaily('ref','day-out')">Ref <span id="sort_dayout_ref"></span></th>
+                            <th onclick="UI.sortDaily('kode','day-out')">Kode <span id="sort_dayout_kode"></span></th>
+                            <th onclick="UI.sortDaily('nama','day-out')">Nama <span id="sort_dayout_nama"></span></th>
+                            <th onclick="UI.sortDaily('batch','day-out')">Batch <span id="sort_dayout_batch"></span></th>
+                            <th>Qty</th><th>Ket</th><th style="width:80px">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dayoutTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-batch" class="tab-pane">
+            <div class="card">
+                <div class="batch-filter-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                    <div class="f-item">
+                        <label>Kode Barang:</label>
+                        <div style="position:relative;">
+                            <input type="text" id="b_f_kode" oninput="UI.showAutoList('b_f_k')" onfocus="UI.showAutoList('b_f_k')" onkeydown="UI.handleAutoKey(event, 'b_f_k')" autocomplete="off" placeholder="Pilih Kode...">
+                            <div id="b_f_k_list" class="autocomplete-items"></div>
+                        </div>
+                    </div>
+                    <div class="f-item">
+                        <label>Nama Barang:</label>
+                        <div style="position:relative;">
+                            <input type="text" id="b_f_nama" oninput="UI.showAutoList('b_f_n')" onfocus="UI.showAutoList('b_f_n')" onkeydown="UI.handleAutoKey(event, 'b_f_n')" autocomplete="off" placeholder="Pilih Nama...">
+                            <div id="b_f_n_list" class="autocomplete-items"></div>
+                        </div>
+                    </div>
+                    <div class="f-item"><label>Total Stok:</label><input type="text" id="b_f_stok" readonly class="read-only" style="text-align:center; font-weight:bold;"></div>
+                    <div class="f-item" style="display:flex; align-items:flex-end; gap:5px;">
+                        <button class="btn-primary" onclick="UI.refresh()">Filter</button>
+                        <button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('batch')">Reset</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card overflow-x">
+                <table>
+                    <thead><tr><th width="20%">Kode</th><th>Nama Barang</th><th width="20%">No. Batch</th><th width="15%">Exp Date</th><th width="15%">Stok</th></tr></thead>
+                    <tbody id="batchContainer"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-mutasi" class="tab-pane">
+            <div class="card"><div class="form-row-compact">
+                <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3" selected>Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
+                <div class="f-item"><label>Tahun:</label><select id="f_mutasi_y" onchange="UI.refresh()"><option value="2026">2026</option></select></div>
+                <div class="f-item"><label>Cari:</label><input type="text" id="f_mutasi_q" onkeyup="UI.refresh()"></div>
+            </div></div>
+            <div class="card pivot-container">
+                <table id="tableMutasi" class="table-pivot">
+                    <thead id="mutasiHeader"></thead>
+                    <tbody id="mutasiTableBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="tab-log" class="tab-pane">
-            <div class="card"><div class="filter-grid-log">
-                <div class="f-item"><label>Dari:</label><input type="text" id="f_tgl_1" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Ke:</label><input type="text" id="f_tgl_2" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
-                <div class="f-item"><label>Kode:</label><div style="position:relative;"><input type="text" id="l_f_kode" oninput="UI.showAutoList('l_f_k')" onfocus="UI.showAutoList('l_f_k')" onkeydown="UI.handleAutoKey(event, 'l_f_k')" autocomplete="off" placeholder="Kode..."><div id="l_f_k_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Nama:</label><div style="position:relative;"><input type="text" id="l_f_nama" oninput="UI.showAutoList('l_f_n')" onfocus="UI.showAutoList('l_f_n')" onkeydown="UI.handleAutoKey(event, 'l_f_n')" autocomplete="off" placeholder="Nama..."><div id="l_f_n_list" class="autocomplete-items"></div></div></div>
-                <div class="f-item"><label>Jenis:</label><select id="f_tipe"><option value="ALL">Semua</option><option value="IN">IN</option><option value="OUT">OUT</option></select></div><div class="f-item" style="display:flex; gap:5px; align-items:flex-end;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('log')">Reset</button></div>
-            </div></div>
-            <div class="card overflow-x"><table><thead><tr><th>Tgl</th><th>Ref</th><th>Kode</th><th>Nama</th><th>Batch</th><th>Qty</th><th>Tipe</th><th>Ket</th><th>Verif</th></tr></thead><tbody id="logTableBody"></tbody></table></div>
+            <div class="card">
+                <div class="filter-grid-log" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+                    <div class="f-item"><label>Dari:</label><input type="text" id="f_tgl_1" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                    <div class="f-item"><label>Ke:</label><input type="text" id="f_tgl_2" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
+                    <div class="f-item">
+                        <label>Kode:</label>
+                        <div style="position:relative;">
+                            <input type="text" id="l_f_kode" oninput="UI.showAutoList('l_f_k')" onkeydown="UI.handleAutoKey(event, 'l_f_k')" autocomplete="off" placeholder="Kode...">
+                            <div id="l_f_k_list" class="autocomplete-items"></div>
+                        </div>
+                    </div>
+                    <div class="f-item"><label>Jenis:</label><select id="f_tipe"><option value="ALL">Semua</option><option value="IN">IN</option><option value="OUT">OUT</option><option value="ADJ">ADJ</option></select></div>
+                    <div class="f-item" style="display:flex; align-items:flex-end; gap:5px;">
+                        <button class="btn-primary" onclick="UI.refresh()">Filter</button>
+                        <button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('log')">Reset</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card overflow-x">
+                <table>
+                    <thead><tr><th>Tgl</th><th>Ref</th><th>Kode</th><th>Nama</th><th>Batch</th><th>Qty</th><th>Tipe</th><th>Ket</th><th style="width:50px">Aksi</th></tr></thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </main>
 
-    <div id="modalLogin" class="modal">
-        <div class="modal-content sz-mini">
-            <h3>Akses Masuk</h3>
-            <select id="loginRole" onchange="UI.loginUX(this.value)">
-                <option value="staff">Staff</option>
-                <option value="admin">Administrator</option>
-            </select>
-            <div id="adminPassArea" style="display:block; margin-top: 10px;">
-                <input type="password" id="adminPass" placeholder="Masukkan Password..." onkeydown="if(event.key==='Enter') Auth.login()">
+    <div id="modalPreview" class="modal" style="display:none;">
+        <div class="modal-content sz-mini" style="padding:0;">
+            <div id="previewHeader" style="background:#f1f5f9; padding:10px; font-weight:bold;">Kroscek Data</div>
+            <div style="padding:15px;">
+                <div id="previewContent" style="margin-bottom:15px; border:1px dashed #ccc; padding:10px;"></div>
+                <div style="display:flex; gap:10px;">
+                    <button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()">Simpan (Enter)</button>
+                    <button class="btn-outline" onclick="UI.closeModal('modalPreview')">Batal Edit</button>
+                </div>
             </div>
-            <button class="btn-primary" onclick="Auth.login()">Masuk</button>
-            <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
         </div>
     </div>
-    <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
-    <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
-    <div id="modalMaster" class="modal">
-        <div class="modal-content sz-mini">
-            <h3 id="masterTitle">Master Barang</h3>
-            <input type="hidden" id="m_k_old">
-            <label>Kode Barang:</label><input id="m_k" placeholder="FKxxx">
-            <label>Nama Barang:</label><input id="m_n">
-            <label>Masa Simpan (Hari):</label><input id="m_m" type="number" placeholder="Contoh: 365">
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <button class="btn-primary" style="flex:1;" onclick="App.saveMaster()">💾 Simpan</button>
-                <button class="btn-outline" style="flex:1; margin-top:0;" onclick="UI.closeModal('modalMaster')">Batal</button>
-            </div>
-            <button id="btnHapusMaster" class="btn-danger" style="display:none; margin-top:10px;" onclick="App.deleteMaster()">🗑️ Hapus Database</button>
-        </div>
-    </div>
-    
-    <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.saveImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
-
-    <script src="script.js?v=8.27"></script>
+    <script src="script.js?v=8.31"></script>
 </body>
 </html>

@@ -271,3 +271,16 @@ body.dark-mode .k-awal {
     80% { opacity: 1; bottom: 20px; }
     100% { opacity: 0; bottom: 10px; }
 }
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+.btn-icon:hover {
+    background: #fee2e2; /* Merah muda halus */
+}

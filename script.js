@@ -30,9 +30,14 @@ const DB = {
             if (resMaster.error) throw resMaster.error;
             if (resTrx.error) throw resTrx.error;
 
+            // Tambahkan ini: Pastikan memori lokal dibersihkan sebelum diisi ulang
+            localStorage.removeItem('m');
+            localStorage.removeItem('l');
+
             DB.set('m', resMaster.data || []);
             DB.set('l', resTrx.data || []);
             
+            console.log("✅ Data sinkron dengan database terbaru.");
         } catch (err) {
             console.error("Gagal load data Supabase:", err.message);
         }
@@ -137,6 +142,9 @@ const UI = {
     sortCol: 'kode', sortAsc: true, 
     sortMutasiCol: 'kode', sortMutasiAsc: true, 
     currentFocus: -1,
+	sortDailyCol: 'ref',
+    sortDailyAsc: true,
+
 
     // Tambahkan/Update di dalam objek UI: { ... }
     toggleVerify: async (id) => {
@@ -211,9 +219,22 @@ const UI = {
     toggleSidebar: () => document.getElementById('sidebar').classList.toggle('mini'),
 
     switchTab: (id, btn) => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active'); const target = document.getElementById('tab-' + id); if(target) target.classList.add('active');
-        document.getElementById('global-header').style.display = (id === 'stok') ? 'block' : 'none'; UI.refresh();
+        const targetPane = document.getElementById('tab-' + id);
+        if (!targetPane) {
+            console.error("Tab pane tidak ditemukan: tab-" + id);
+            return;
+        }
+
+        // 1. Nonaktifkan semua tab & button yang ada
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        
+        // 2. Aktifkan tab yang dipilih
+        targetPane.classList.add('active');
+        if (btn) btn.classList.add('active');
+        
+        // 3. Jalankan refresh agar data langsung muncul
+        UI.refresh();
     },
 
     clearFilter: (target) => {
@@ -366,19 +387,19 @@ removeActive: (x) => {
     refresh: () => {
         const ms = DB.get('m') || []; 
         const l = DB.get('l') || []; 
-        const act = Engine.calculate(); 
+        const act = Engine.calculate() || []; 
         
-        const searchEl = document.getElementById('searchInput'); 
-        const qG = searchEl ? searchEl.value.toUpperCase() : '';
+        const qG = document.getElementById('searchInput')?.value.toUpperCase() || '';
         const session = DB.get('currentUser') || {}; 
         const isAdmin = session.role === 'admin';
         
-        // Atur tampilan kolom aksi untuk admin
-        const thAksi = document.getElementById('th_aksi'); 
+        // FIX ERROR STYLE: Gunakan ID yang sesuai dengan HTML (th_aksi_stok)
+        const thAksi = document.getElementById('th_aksi_stok'); 
         if(thAksi) thAksi.style.display = isAdmin ? 'table-cell' : 'none';
 
-        // 1. Tab Stok (Inventory)
-        if(document.getElementById('tab-stok').classList.contains('active')) {
+        // 1. Tab Stok (Inventory) - Proteksi classList
+        const tStok = document.getElementById('tab-stok');
+        if(tStok?.classList.contains('active')) {
             let stokData = ms.filter(m => (m.kode||'').toUpperCase().includes(qG) || (m.nama||'').toUpperCase().includes(qG)).map(m => {
                 const bts = act.filter(b => b.kode === m.kode), ttl = bts.reduce((a,b)=>a+b.stok, 0); 
                 return { kode: m.kode || '-', nama: m.nama || '-', stok: ttl };
@@ -390,10 +411,13 @@ removeActive: (x) => {
                 if(vA < vB) return UI.sortAsc ? -1 : 1; if(vA > vB) return UI.sortAsc ? 1 : -1; return 0;
             });
 
-            document.getElementById('inventoryBody').innerHTML = stokData.map(m => {
-                let actionBtn = isAdmin ? `<td style="text-align:center;"><button class="btn-outline" style="padding:2px 8px; font-size:11px; margin:0;" onclick="App.editMaster('${m.kode}')">✏️ Edit</button></td>` : '';
-                return `<tr><td><b>${m.kode}</b></td><td>${m.nama}</td><td>${m.stok}</td><td>${m.stok > 0 ? '<span class="txt-m" style="color:#16a34a">Aktif</span>' : '<span style="color:#94a3b8">-</span>'}</td>${actionBtn}</tr>`;
-            }).join('');
+            const invBody = document.getElementById('inventoryBody');
+            if(invBody) {
+                invBody.innerHTML = stokData.map(m => {
+                    let actionBtn = isAdmin ? `<td style="text-align:center;"><button class="btn-outline" style="padding:2px 8px; font-size:11px; margin:0;" onclick="App.editMaster('${m.kode}')">✏️</button></td>` : '';
+                    return `<tr><td><b>${m.kode}</b></td><td>${m.nama}</td><td>${m.stok}</td><td>${m.stok > 0 ? '<span class="txt-m" style="color:#16a34a">Aktif</span>' : '<span style="color:#94a3b8">-</span>'}</td>${actionBtn}</tr>`;
+                }).join('');
+            }
             
             ['kode', 'nama', 'stok'].forEach(c => { 
                 const el = document.getElementById(`sort_${c}`); 
@@ -402,15 +426,16 @@ removeActive: (x) => {
         }
 
         // 2. Render Tab Harian (IN & OUT)
-        // Fungsi ini sekarang sudah otomatis memfilter ADJ (siluman) berdasarkan kode yang kita buat tadi
         UI.renderDaily('day-in', 'IN', ms, l); 
         UI.renderDaily('day-out', 'OUT', ms, l);
 
-        // 3. Render Tab Lainnya jika sedang aktif
-        if (document.getElementById('tab-mutasi').classList.contains('active')) UI.renderMutasiPivot(ms, l);
-        if (document.getElementById('tab-batch').classList.contains('active')) UI.renderBatch(ms, act);
-        if (document.getElementById('tab-log').classList.contains('active')) UI.renderLog(ms, l);
-        if (document.getElementById('tab-expiry').classList.contains('active')) UI.renderExpiry();
+        // 3. FIX ERROR classList: Tambahkan pengecekan eksistensi elemen sebelum cek .active
+        const checkActive = (id) => document.getElementById(id)?.classList.contains('active');
+
+        if (checkActive('tab-mutasi')) UI.renderMutasiPivot(ms, l);
+        if (checkActive('tab-batch')) UI.renderBatch(ms, act);
+        if (checkActive('tab-log')) UI.renderLog(ms, l);
+        if (checkActive('tab-expiry')) UI.renderExpiry();
     },
 
     renderMutasiPivot: (ms, l) => {
@@ -443,25 +468,29 @@ removeActive: (x) => {
         let dM = Array(days+1).fill(0), dK = Array(days+1).fill(0);
         
         l.filter(x => x.kode === it.kode).forEach(log => {
-            const ld = new Date(log.tgl), ly = ld.getFullYear(), lm = ld.getMonth()+1;
+            // FIX: Gunakan split agar tidak terpengaruh zona waktu browser
+            const parts = log.tgl.split('-'); // Asumsi format YYYY-MM-DD
+            const ly = parseInt(parts[0]);
+            const lm = parseInt(parts[1]);
+            const ld = parseInt(parts[2]);
             
-            // 1. Saldo Awal (Bulan sebelumnya)
+            // 1. Saldo Awal (Bulan-bulan sebelumnya)
             if (ly < y || (ly === y && lm < m)) {
                 if (log.tipe === 'IN') aw += log.qty;
                 else if (log.tipe === 'OUT') aw -= log.qty;
-                else if (log.tipe === 'ADJ') aw += log.qty; // ADJ +/- mempengaruhi awal
+                else if (log.tipe === 'ADJ') aw += log.qty; 
             } 
             
             // 2. Harian (Bulan Berjalan)
             else if (ly === y && lm === m) { 
-                const day = ld.getDate();
+                const day = ld; // Ambil tanggal dari split tadi
                 
-                // KOREKSI/ADJ: Masuk ke kolom M (Plus menambah, Minus memotong)
+                // KOREKSI/ADJ
                 if (log.tipe === 'ADJ') {
                     dM[day] += log.qty;
                     ti += log.qty;
                 }
-                // RETURN: Memotong kolom K
+                // RETURN
                 else if (log.ref && String(log.ref).endsWith('-RET')) {
                     dK[day] -= log.qty; 
                     to -= log.qty;
@@ -504,52 +533,99 @@ removeActive: (x) => {
     }).join('');
 },
 
-    // --- Kode Sebelum (Baris 218) ---
+    sortDaily: (col, tabId) => {
+        if (UI.sortDailyCol === col) {
+            UI.sortDailyAsc = !UI.sortDailyAsc;
+        } else {
+            UI.sortDailyCol = col;
+            UI.sortDailyAsc = true;
+        }
+        UI.refresh();
+    },
+
     renderDaily: (id, tipe, ms, l) => {
-        const pane = document.getElementById('tab-' + id); if (!pane || !pane.classList.contains('active')) return;
-        const tglInput = document.getElementById(`f_${id.replace('-','_')}_tgl`);
-        const qInput = document.getElementById(`f_${id.replace('-','_')}_q`);
-        if(!tglInput || !qInput) return;
+        // 1. Cek apakah Tab Pane ada
+        const pane = document.getElementById('tab-' + id);
+        if (!pane) return; // Keluar jika ID tab tidak ditemukan
+        if (!pane.classList.contains('active')) return;
+
+        // 2. Sesuaikan ID Input (Coba kedua kemungkinan: dengan atau tanpa underscore)
+        const baseID = id.replace('-', '_'); // day_in
+        const altID = id.replace('-', '');   // dayin
+        
+        const tglInput = document.getElementById(`f_${baseID}_tgl`) || document.getElementById(`f_${altID}_tgl`);
+        const qInput = document.getElementById(`f_${baseID}_q`) || document.getElementById(`f_${altID}_q`);
+        
+        if (!tglInput || !qInput) {
+            console.warn(`Filter input untuk ${id} tidak ditemukan.`);
+            return;
+        }
 
         const tglFilter = DateHelper.toDB(tglInput.value);
         const searchVal = qInput.value.toUpperCase();
 
-        const filtered = l.filter(x => {
-            // 1. Filter Tanggal dan Tipe (IN/OUT)
+        // 3. Filter Data
+        let filtered = l.filter(x => {
             const isMatch = x.tgl === tglFilter && x.tipe === tipe;
-            
-            // 2. Filter Pencarian Kode/Nama
-            const isSearch = (x.kode||'').toUpperCase().includes(searchVal) || 
-                             ((ms.find(m=>m.kode===x.kode)||{}).nama||'').toUpperCase().includes(searchVal);
-            
-            // 3. SEMBUNYIKAN ADJ (Koreksi) dari Laporan Harian (Baris Tambahan)
+            const m = ms.find(it => it.kode === x.kode) || {};
+            const isSearch = (x.kode || '').toUpperCase().includes(searchVal) || 
+                             (m.nama || '').toUpperCase().includes(searchVal);
             const isNotAdj = x.tipe !== 'ADJ';
-
-            // 4. Sembunyikan transaksi Return dari Tab IN
             const isNotReturn = !(tipe === 'IN' && x.ref && String(x.ref).endsWith('-RET'));
-            
-            // Gabungkan semua filter
             return isMatch && isSearch && isNotAdj && isNotReturn;
         });
 
-        document.getElementById(`${id.replace('-','')}TableBody`).innerHTML = filtered.reverse().map(x => {
+        // 4. Sorting (Gunakan state global UI.sortDailyCol)
+        filtered.sort((a, b) => {
+            let vA, vB;
+            if (UI.sortDailyCol === 'nama') {
+                vA = (ms.find(m => m.kode === a.kode)?.nama || "").toUpperCase();
+                vB = (ms.find(m => m.kode === b.kode)?.nama || "").toUpperCase();
+            } else {
+                vA = (a[UI.sortDailyCol] || "").toString().toUpperCase();
+                vB = (b[UI.sortDailyCol] || "").toString().toUpperCase();
+            }
+            if (vA < vB) return UI.sortDailyAsc ? -1 : 1;
+            if (vA > vB) return UI.sortDailyAsc ? 1 : -1;
+            return 0;
+        });
+
+        // 5. Update Indikator Panah di Header
+        const cols = ['ref', 'kode', 'nama', 'batch'];
+        cols.forEach(c => {
+            // Cek ID sort (dayin atau day_in)
+            const sortEl = document.getElementById(`sort_${baseID}_${c}`) || document.getElementById(`sort_${altID}_${c}`);
+            if (sortEl) sortEl.innerHTML = (UI.sortDailyCol === c) ? (UI.sortDailyAsc ? ' ▲' : ' ▼') : '';
+        });
+
+        // 6. Render ke Table Body
+        const bodyId = `${altID}TableBody`; // dayinTableBody
+        const bodyEl = document.getElementById(bodyId);
+        if (!bodyEl) return;
+
+        bodyEl.innerHTML = filtered.map(x => {
             const m = ms.find(i => i.kode === x.kode);
-            
-            let displayQty = x.qty;
+            let dQty = x.qty;
             if (tipe === 'OUT') {
                 const totalRet = l.filter(r => r.ref === x.ref + "-RET").reduce((a, b) => a + b.qty, 0);
-                displayQty = x.qty - totalRet;
+                dQty = x.qty - totalRet;
             }
 
-            return `<tr class="${x.v ? 'is-verified' : ''}">
-                <td>${x.ref}</td>
-                <td><b>${x.kode}</b></td>
-                <td>${m ? m.nama : ''}</td>
-                <td>${x.batch}</td>
-                <td><b>${displayQty}</b> ${displayQty !== x.qty ? `<br><small style="color:#ef4444">(Ret: ${x.qty - displayQty})</small>` : ''}</td>
-                <td>${x.ket || '-'}</td>
-                <td align="center"><input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')"></td>
-            </tr>`;
+            return `
+                <tr class="${x.v ? 'is-verified' : ''}">
+                    <td>${x.ref}</td>
+                    <td><b>${x.kode}</b></td>
+                    <td>${m ? m.nama : '<i>Master Hilang</i>'}</td>
+                    <td>${x.batch || '-'}</td>
+                    <td><b>${dQty}</b> ${dQty !== x.qty ? `<br><small style="color:red">(Ret: ${x.qty - dQty})</small>` : ''}</td>
+                    <td>${x.ket || '-'}</td>
+                    <td align="center">
+                        <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
+                            <input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')">
+                            <button onclick="App.deleteLog('${x.id}')" style="background:none; border:none; cursor:pointer; color:#dc2626;">🗑️</button>
+                        </div>
+                    </td>
+                </tr>`;
         }).join('');
     },
 
@@ -567,11 +643,46 @@ removeActive: (x) => {
     },
 
     renderLog: (ms, l) => {
-        const t1 = DateHelper.toDB(document.getElementById('f_tgl_1').value), t2 = DateHelper.toDB(document.getElementById('f_tgl_2').value), qK = document.getElementById('l_f_kode').value.toUpperCase(), tipe = document.getElementById('f_tipe').value;
-        const filtered = l.filter(x => (x.tgl >= t1 && x.tgl <= t2) && (qK ? x.kode === qK : true) && (tipe === 'ALL' || x.tipe === tipe));
-        document.getElementById('logTableBody').innerHTML = filtered.reverse().map(x => {
-            const m = ms.find(i => i.kode === x.kode); let tColor = x.tipe === 'IN' ? 'txt-m' : 'txt-k';
-            return `<tr><td>${DateHelper.toUI(x.tgl)}</td><td>${x.ref}</td><td><b>${x.kode}</b></td><td>${m ? m.nama : ''}</td><td>${x.batch}</td><td class="${tColor}"><b>${x.qty}</b></td><td>${x.tipe}</td><td>${x.ket || '-'}</td></tr>`;
+        // 1. Ambil Nilai Filter
+        const t1 = DateHelper.toDB(document.getElementById('f_tgl_1').value);
+        const t2 = DateHelper.toDB(document.getElementById('f_tgl_2').value);
+        const qK = document.getElementById('l_f_kode').value.toUpperCase();
+        const tipe = document.getElementById('f_tipe').value;
+
+        // 2. Filter Data
+        const filtered = l.filter(x => {
+            const isDate = (x.tgl >= t1 && x.tgl <= t2);
+            const isKode = qK ? x.kode === qK : true;
+            const isTipe = (tipe === 'ALL' || x.tipe === tipe);
+            return isDate && isKode && isTipe;
+        });
+
+        // 3. Render ke Table Body
+        const logBody = document.getElementById('logTableBody');
+        if (!logBody) return;
+
+        logBody.innerHTML = filtered.reverse().map(x => {
+            const m = ms.find(i => i.kode === x.kode);
+            let tColor = x.tipe === 'IN' ? 'txt-m' : (x.tipe === 'OUT' ? 'txt-k' : '');
+            
+            return `
+                <tr>
+                    <td>${DateHelper.toUI(x.tgl)}</td>
+                    <td>${x.ref}</td>
+                    <td><b>${x.kode}</b></td>
+                    <td>${m ? m.nama : '<i style="color:red">Master Hilang</i>'}</td>
+                    <td>${x.batch || '-'}</td>
+                    <td class="${tColor}"><b>${x.qty}</b></td>
+                    <td align="center"><span class="badge-${x.tipe.toLowerCase()}">${x.tipe}</span></td>
+                    <td>${x.ket || '-'}</td>
+                    <td align="center">
+                        <button onclick="App.deleteLog('${x.id}')" 
+                            style="background:none; border:none; cursor:pointer; font-size:16px; color:#dc2626;" 
+                            title="Hapus Permanen">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>`;
         }).join('');
     },
 		// Tambahkan di dalam objek UI: { ... }
@@ -980,6 +1091,26 @@ saveMaster: async () => {
         // Load data awal dari Supabase
         await DB.load();
         UI.refresh();
+    },
+	deleteLog: async (id) => {
+        if (!confirm("Yakin ingin menghapus transaksi ini? Stok akan ikut terkoreksi.")) return;
+
+        try {
+            // 1. Hapus dari Supabase
+            const { error } = await sb.from('transaksi_log').delete().eq('id', id);
+            if (error) throw error;
+
+            // 2. Paksa Sinkronisasi (Hapus data lokal & ambil yang baru)
+            await DB.load(); 
+
+            // 3. Refresh semua UI (Tabel Harian & Pivot)
+            UI.refresh(); 
+
+            UI.showToast("✅ Transaksi berhasil dihapus!");
+        } catch (err) {
+            console.error("Gagal hapus:", err.message);
+            alert("Error: " + err.message);
+        }
     }
 };
 
