@@ -357,113 +357,145 @@ removeActive: (x) => {
     },
 
     refresh: () => {
-        const ms = DB.get('m') || []; const l = DB.get('l') || []; const act = Engine.calculate(); 
-        const searchEl = document.getElementById('searchInput'); const qG = searchEl ? searchEl.value.toUpperCase() : '';
-        const session = DB.get('currentUser') || {}; const isAdmin = session.role === 'admin';
-        const thAksi = document.getElementById('th_aksi'); if(thAksi) thAksi.style.display = isAdmin ? 'table-cell' : 'none';
+        const ms = DB.get('m') || []; 
+        const l = DB.get('l') || []; 
+        const act = Engine.calculate(); 
+        
+        const searchEl = document.getElementById('searchInput'); 
+        const qG = searchEl ? searchEl.value.toUpperCase() : '';
+        const session = DB.get('currentUser') || {}; 
+        const isAdmin = session.role === 'admin';
+        
+        // Atur tampilan kolom aksi untuk admin
+        const thAksi = document.getElementById('th_aksi'); 
+        if(thAksi) thAksi.style.display = isAdmin ? 'table-cell' : 'none';
 
+        // 1. Tab Stok (Inventory)
         if(document.getElementById('tab-stok').classList.contains('active')) {
             let stokData = ms.filter(m => (m.kode||'').toUpperCase().includes(qG) || (m.nama||'').toUpperCase().includes(qG)).map(m => {
-                const bts = act.filter(b => b.kode === m.kode), ttl = bts.reduce((a,b)=>a+b.stok, 0); return { kode: m.kode || '-', nama: m.nama || '-', stok: ttl };
+                const bts = act.filter(b => b.kode === m.kode), ttl = bts.reduce((a,b)=>a+b.stok, 0); 
+                return { kode: m.kode || '-', nama: m.nama || '-', stok: ttl };
             });
+            
             stokData.sort((a, b) => {
                 let vA = a[UI.sortCol]; let vB = b[UI.sortCol];
                 if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
                 if(vA < vB) return UI.sortAsc ? -1 : 1; if(vA > vB) return UI.sortAsc ? 1 : -1; return 0;
             });
+
             document.getElementById('inventoryBody').innerHTML = stokData.map(m => {
                 let actionBtn = isAdmin ? `<td style="text-align:center;"><button class="btn-outline" style="padding:2px 8px; font-size:11px; margin:0;" onclick="App.editMaster('${m.kode}')">✏️ Edit</button></td>` : '';
-                return `<tr><td><b>${m.kode}</b></td><td>${m.nama}</td><td>${m.stok}</td><td>${m.stok > 0 ? '<span class="txt-m">Aktif</span>' : '-'}</td>${actionBtn}</tr>`;
+                return `<tr><td><b>${m.kode}</b></td><td>${m.nama}</td><td>${m.stok}</td><td>${m.stok > 0 ? '<span class="txt-m" style="color:#16a34a">Aktif</span>' : '<span style="color:#94a3b8">-</span>'}</td>${actionBtn}</tr>`;
             }).join('');
-            ['kode', 'nama', 'stok'].forEach(c => { const el = document.getElementById(`sort_${c}`); if(el) el.innerHTML = UI.sortCol === c ? (UI.sortAsc ? '▲' : '▼') : ''; });
+            
+            ['kode', 'nama', 'stok'].forEach(c => { 
+                const el = document.getElementById(`sort_${c}`); 
+                if(el) el.innerHTML = UI.sortCol === c ? (UI.sortAsc ? '▲' : '▼') : ''; 
+            });
         }
 
-        UI.renderDaily('day-in', 'IN', ms, l); UI.renderDaily('day-out', 'OUT', ms, l);
+        // 2. Render Tab Harian (IN & OUT)
+        // Fungsi ini sekarang sudah otomatis memfilter ADJ (siluman) berdasarkan kode yang kita buat tadi
+        UI.renderDaily('day-in', 'IN', ms, l); 
+        UI.renderDaily('day-out', 'OUT', ms, l);
+
+        // 3. Render Tab Lainnya jika sedang aktif
         if (document.getElementById('tab-mutasi').classList.contains('active')) UI.renderMutasiPivot(ms, l);
         if (document.getElementById('tab-batch').classList.contains('active')) UI.renderBatch(ms, act);
         if (document.getElementById('tab-log').classList.contains('active')) UI.renderLog(ms, l);
-		// Di dalam UI.refresh (Sekitar Baris 215)
-		if (document.getElementById('tab-expiry').classList.contains('active')) UI.renderExpiry();
+        if (document.getElementById('tab-expiry').classList.contains('active')) UI.renderExpiry();
     },
 
     renderMutasiPivot: (ms, l) => {
-        const selM = document.getElementById('f_mutasi_m'); 
-        const selY = document.getElementById('f_mutasi_y');
-        if(!selM || !selY) return;
+    const selM = document.getElementById('f_mutasi_m'); 
+    const selY = document.getElementById('f_mutasi_y');
+    if(!selM || !selY) return;
 
-        const now = new Date();
-        // Baris Kunci: Jika value kosong/NaN, ambil bulan (1-12) dan tahun sekarang
-        const m = selM.value ? parseInt(selM.value) : now.getMonth() + 1;
-        const y = selY.value ? parseInt(selY.value) : now.getFullYear();
+    const now = new Date();
+    const m = selM.value ? parseInt(selM.value) : now.getMonth() + 1;
+    const y = selY.value ? parseInt(selY.value) : now.getFullYear();
+    
+    const days = new Date(y, m, 0).getDate(); 
+    const q = (document.getElementById('f_mutasi_q').value || "").toUpperCase();
+
+    const getArrow = (col) => UI.sortMutasiCol === col ? (UI.sortMutasiAsc ? ' ▲' : ' ▼') : '';
+    
+    // Render Header Tabel
+    let h1 = `<tr><th rowspan="2" class="sticky-col k-kode sortable" onclick="UI.sortMutasi('kode')">Kode${getArrow('kode')}</th><th rowspan="2" class="sticky-col k-nama sortable" onclick="UI.sortMutasi('nama')">Nama Barang${getArrow('nama')}</th><th rowspan="2" class="sticky-col k-awal" style="background-color: var(--bg-awal);">Awal</th>`; 
+    let h2 = `<tr>`;
+    for(let i=1; i<=days; i++) { 
+        h1 += `<th colspan="2" class="day-header">${i}</th>`; 
+        h2 += `<th class="sub-col" style="background-color: var(--bg-in);">M</th><th class="sub-col" style="background-color: var(--bg-out);">K</th>`; 
+    }
+    h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" class="sortable" onclick="UI.sortMutasi('akhir')" style="background-color: var(--bg-akhir);">Akhir${getArrow('akhir')}</th></tr>`; 
+    document.getElementById('mutasiHeader').innerHTML = h1 + h2 + `</tr>`;
+    
+    // Olah Data Pivot
+    let pivotData = ms.filter(m_ => (m_.kode||'').includes(q) || (m_.nama||'').toUpperCase().includes(q)).map(it => {
+        let aw = 0, ti = 0, to = 0;
+        let dM = Array(days+1).fill(0), dK = Array(days+1).fill(0);
         
-        const days = new Date(y, m, 0).getDate(); 
-        const q = (document.getElementById('f_mutasi_q').value || "").toUpperCase();
-// --- Akhir Perubahan ---
-        const getArrow = (col) => UI.sortMutasiCol === col ? (UI.sortMutasiAsc ? ' ▲' : ' ▼') : '';
-        let h1 = `<tr><th rowspan="2" class="sticky-col k-kode sortable" onclick="UI.sortMutasi('kode')">Kode${getArrow('kode')}</th><th rowspan="2" class="sticky-col k-nama sortable" onclick="UI.sortMutasi('nama')">Nama Barang${getArrow('nama')}</th><th rowspan="2" class="sticky-col k-awal" style="background-color: var(--bg-awal);">Awal</th>`; 
-        let h2 = `<tr>`;
-        for(let i=1; i<=days; i++) { h1 += `<th colspan="2" class="day-header">${i}</th>`; h2 += `<th class="sub-col" style="background-color: var(--bg-in);">M</th><th class="sub-col" style="background-color: var(--bg-out);">K</th>`; }
-        h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" class="sortable" onclick="UI.sortMutasi('akhir')" style="background-color: var(--bg-akhir);">Akhir${getArrow('akhir')}</th></tr>`; 
-        document.getElementById('mutasiHeader').innerHTML = h1 + h2 + `</tr>`;
-        
-        // --- Kode Sebelum (Baris 180) ---
-        let pivotData = ms.filter(m_ => (m_.kode||'').includes(q) || (m_.nama||'').toUpperCase().includes(q)).map(it => {
-            let aw = 0, ti = 0, to = 0, dM = Array(days+1).fill(0), dK = Array(days+1).fill(0);
+        l.filter(x => x.kode === it.kode).forEach(log => {
+            const ld = new Date(log.tgl), ly = ld.getFullYear(), lm = ld.getMonth()+1;
             
-            l.filter(x => x.kode === it.kode).forEach(log => {
-                const ld = new Date(log.tgl), ly = ld.getFullYear(), lm = ld.getMonth()+1;
+            // 1. Saldo Awal (Bulan sebelumnya)
+            if (ly < y || (ly === y && lm < m)) {
+                if (log.tipe === 'IN') aw += log.qty;
+                else if (log.tipe === 'OUT') aw -= log.qty;
+                else if (log.tipe === 'ADJ') aw += log.qty; // ADJ +/- mempengaruhi awal
+            } 
+            
+            // 2. Harian (Bulan Berjalan)
+            else if (ly === y && lm === m) { 
+                const day = ld.getDate();
                 
-                // 1. Logika Saldo Awal (Bulan-bulan sebelumnya)
-                if (ly < y || (ly === y && lm < m)) {
-                    log.tipe === 'IN' ? aw += log.qty : aw -= log.qty;
-                } 
-                
-                // 2. Logika Harian (Bulan berjalan) - Baris 190
-                else if (ly === y && lm === m) { 
-                    const day = ld.getDate();
-                    
-                    // CEK JIKA TRANSAKSI ADALAH RETURN (-RET)
-                    if (log.ref && String(log.ref).endsWith('-RET')) {
-                        dK[day] -= log.qty; // Kurangi kolom K (Keluar)
-                        to -= log.qty;      // Perbaiki total Keluar bulanan
-                    } 
-                    else if (log.tipe === 'IN') { 
-                        dM[day] += log.qty; 
-                        ti += log.qty; 
-                    } 
-                    else { 
-                        dK[day] += log.qty; 
-                        to += log.qty; 
-                    } 
+                // KOREKSI/ADJ: Masuk ke kolom M (Plus menambah, Minus memotong)
+                if (log.tipe === 'ADJ') {
+                    dM[day] += log.qty;
+                    ti += log.qty;
                 }
-            });
-
-            // 3. Return Object Data untuk Pivot - Baris 200
-            return { 
-                kode: it.kode, 
-                nama: it.nama, 
-                awal: aw, 
-                masuk: ti, 
-                keluar: to, 
-                akhir: (aw + ti - to), 
-                harianM: dM, 
-                harianK: dK 
-            };
-        });
-// --- Kode Sesudah ---
-
-        pivotData.sort((a, b) => {
-            let vA = a[UI.sortMutasiCol]; let vB = b[UI.sortMutasiCol];
-            if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
-            if(vA < vB) return UI.sortMutasiAsc ? -1 : 1; if(vA > vB) return UI.sortMutasiAsc ? 1 : -1; return 0;
+                // RETURN: Memotong kolom K
+                else if (log.ref && String(log.ref).endsWith('-RET')) {
+                    dK[day] -= log.qty; 
+                    to -= log.qty;
+                } 
+                // MASUK (IN)
+                else if (log.tipe === 'IN') { 
+                    dM[day] += log.qty; 
+                    ti += log.qty; 
+                } 
+                // KELUAR (OUT)
+                else if (log.tipe === 'OUT') { 
+                    dK[day] += log.qty; 
+                    to += log.qty; 
+                } 
+            }
         });
 
-        document.getElementById('mutasiTableBody').innerHTML = pivotData.map(row => {
-            let htmlRow = `<tr><td class="sticky-col k-kode"><b>${row.kode}</b></td><td class="sticky-col k-nama">${row.nama}</td><td class="sticky-col k-awal" style="background-color: var(--bg-awal);">${row.awal}</td>`;
-            for(let i=1; i<=days; i++) { htmlRow += `<td class="sub-col txt-m" style="background-color: var(--bg-in);">${row.harianM[i]||''}</td><td class="sub-col txt-k" style="background-color: var(--bg-out);">${row.harianK[i]||''}</td>`; }
-            return htmlRow + `<td>${row.masuk}</td><td>${row.keluar}</td><td style="background-color: var(--bg-akhir); font-weight:bold;">${row.akhir}</td></tr>`;
-        }).join('');
-    },
+        return { 
+            kode: it.kode, nama: it.nama, awal: aw, masuk: ti, keluar: to, 
+            akhir: (aw + ti - to), harianM: dM, harianK: dK 
+        };
+    });
+
+    // Sortir
+    pivotData.sort((a, b) => {
+        let vA = a[UI.sortMutasiCol]; let vB = b[UI.sortMutasiCol];
+        if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
+        if(vA < vB) return UI.sortMutasiAsc ? -1 : 1; if(vA > vB) return UI.sortMutasiAsc ? 1 : -1; return 0;
+    });
+
+    // Render Body
+    document.getElementById('mutasiTableBody').innerHTML = pivotData.map(row => {
+        let htmlRow = `<tr><td class="sticky-col k-kode"><b>${row.kode}</b></td><td class="sticky-col k-nama">${row.nama}</td><td class="sticky-col k-awal" style="background-color: var(--bg-awal);">${row.awal}</td>`;
+        for(let i=1; i<=days; i++) { 
+            const valM = row.harianM[i] || '';
+            const valK = row.harianK[i] || '';
+            htmlRow += `<td class="sub-col txt-m" style="background-color: var(--bg-in);">${valM}</td><td class="sub-col txt-k" style="background-color: var(--bg-out);">${valK}</td>`; 
+        }
+        return htmlRow + `<td>${row.masuk}</td><td>${row.keluar}</td><td style="background-color: var(--bg-akhir); font-weight:bold;">${row.akhir}</td></tr>`;
+    }).join('');
+},
 
     // --- Kode Sebelum (Baris 218) ---
     renderDaily: (id, tipe, ms, l) => {
@@ -475,22 +507,27 @@ removeActive: (x) => {
         const tglFilter = DateHelper.toDB(tglInput.value);
         const searchVal = qInput.value.toUpperCase();
 
-// --- Perubahan (Logika Filter Gabungan) ---
         const filtered = l.filter(x => {
+            // 1. Filter Tanggal dan Tipe (IN/OUT)
             const isMatch = x.tgl === tglFilter && x.tipe === tipe;
+            
+            // 2. Filter Pencarian Kode/Nama
             const isSearch = (x.kode||'').toUpperCase().includes(searchVal) || 
                              ((ms.find(m=>m.kode===x.kode)||{}).nama||'').toUpperCase().includes(searchVal);
             
-            // Baris Kunci: Sembunyikan transaksi Return dari Tab IN (karena itu koreksi, bukan stok masuk baru)
+            // 3. SEMBUNYIKAN ADJ (Koreksi) dari Laporan Harian (Baris Tambahan)
+            const isNotAdj = x.tipe !== 'ADJ';
+
+            // 4. Sembunyikan transaksi Return dari Tab IN
             const isNotReturn = !(tipe === 'IN' && x.ref && String(x.ref).endsWith('-RET'));
             
-            return isMatch && isSearch && isNotReturn;
+            // Gabungkan semua filter
+            return isMatch && isSearch && isNotAdj && isNotReturn;
         });
 
         document.getElementById(`${id.replace('-','')}TableBody`).innerHTML = filtered.reverse().map(x => {
             const m = ms.find(i => i.kode === x.kode);
             
-            // Baris Kunci: Jika di Tab OUT, kurangi tampilan Qty dengan total Return terkait
             let displayQty = x.qty;
             if (tipe === 'OUT') {
                 const totalRet = l.filter(r => r.ref === x.ref + "-RET").reduce((a, b) => a + b.qty, 0);
@@ -507,7 +544,6 @@ removeActive: (x) => {
                 <td align="center"><input type="checkbox" ${x.v ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')"></td>
             </tr>`;
         }).join('');
-// --- Akhir Perubahan ---
     },
 
     renderBatch: (ms, act) => {
@@ -773,40 +809,89 @@ const App = {
     prepareSave: (t) => {
         let l = DB.get('l') || []; const ms = DB.get('m') || [];
         const qInput = document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value;
-        let q = parseInt(qInput); const ket = document.getElementById('t_ket')?.value.trim() || "-";
-        const tglRaw = document.getElementById('t_tgl')?.value || ""; const tglDB = DateHelper.toDB(tglRaw);
+        let q = parseInt(qInput); 
+        const ket = document.getElementById('t_ket')?.value.trim() || "-";
+        
+        const tglRaw = document.getElementById('t_tgl')?.value || ""; 
+        const tglDB = DateHelper.toDB(tglRaw);
+        
+        // 1. Validasi Dasar
         if(!tglDB || tglDB.length !== 10) { alert("Format Tanggal tidak valid! (DD-MM-YYYY)"); return; }
-        const expRaw = document.getElementById('t_exp')?.value.trim() || ""; let expDB = DateHelper.toDB(expRaw);
+        const expRaw = document.getElementById('t_exp')?.value.trim() || ""; 
+        let expDB = DateHelper.toDB(expRaw);
         if(t === 'IN' && expRaw && expDB.length !== 10) { alert("Format Expired salah!"); return; }
         if(isNaN(q) || q <= 0) { alert("Qty tidak valid!"); return; }
+        
         let previewHTML = "";
         
+        // 2. Logika Khusus Tipe RETURN (RET)
         if(t === 'RET') {
-            const rData = document.getElementById('t_ret_item').value; if(!rData) return;
-            const refLog = JSON.parse(rData); const stkb = parseInt(document.getElementById('t_stk_b').value); const oldQ = parseInt(document.getElementById('t_q_old').value);
+            const rData = document.getElementById('t_ret_item').value; 
+            if(!rData) return;
+            const refLog = JSON.parse(rData); 
+            const oldQ = parseInt(document.getElementById('t_q_old').value);
+            
             if(q > oldQ) { alert(`Koreksi maksimal ${oldQ}`); return; }
             if(q === oldQ) { alert("Qty baru sama dengan yang lama, tidak ada perubahan."); return; }
+            
             const selisih = oldQ - q;
-            window.pendingData = { tgl: tglDB, ref: refLog.ref + "-RET", kode: refLog.kode, batch: refLog.batch, exp: refLog.exp, qty: selisih, tipe: 'IN', ket: "RETURN/KOREKSI REF: " + refLog.ref, t: t };
+            // Return disimpan sebagai tipe IN agar menambah stok kembali
+            window.pendingData = { 
+                tgl: tglDB, ref: refLog.ref + "-RET", kode: refLog.kode, 
+                batch: refLog.batch, exp: refLog.exp, qty: selisih, 
+                tipe: 'IN', ket: "RETURN/KOREKSI REF: " + refLog.ref, t: t 
+            };
+            
             previewHTML = `<b>TIPE:</b> RETURN / KOREKSI<br><b>Ref Awal:</b> ${refLog.ref}<br><b>Kode:</b> ${refLog.kode}<br><b>Qty Kembali ke Stok:</b> ${selisih}`;
-        } else {
-            const ref = document.getElementById('t_ref').value.trim(); const kode = document.getElementById('t_k').value.toUpperCase();
-            const masterItem = ms.find(x => x.kode === kode); const n = masterItem ? masterItem.nama : "Tidak Dikenal";
+        } 
+        
+        // 3. Logika Umum (IN, OUT, ADJ)
+        else {
+            const ref = document.getElementById('t_ref').value.trim(); 
+            const kode = document.getElementById('t_k').value.toUpperCase();
+            const masterItem = ms.find(x => x.kode === kode); 
+            const n = masterItem ? masterItem.nama : "Tidak Dikenal";
+            
             if(!ref || !kode) { alert("Ref dan Kode wajib diisi!"); return; }
+            
             const batch = (t === 'IN') ? document.getElementById('t_b').value : document.getElementById('t_b_sel').value;
-            let trType = (t === 'IN') ? 'IN' : 'OUT'; if (t === 'ADJ') trType = document.getElementById('t_adj_type').value;
-            window.pendingData = { tgl: tglDB, ref, kode, batch, exp: expDB, qty: q, tipe: trType, ket, t: t };
-            let labelAct = t === 'ADJ' ? (trType === 'IN' ? 'STOK OPNAME (+)' : 'STOK OPNAME (-)') : t;
-            previewHTML = `<div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:5px; margin-bottom:10px;"><b style="color:var(--p);">TIPE:</b> ${labelAct}</div>
-            <table style="width:100%; font-size:13px;">
-                <tr><td width="35%"><b>Tanggal</b></td><td>: ${tglRaw}</td></tr>
-                <tr><td><b>No. Ref</b></td><td>: ${ref}</td></tr>
-                <tr><td><b>Kode</b></td><td>: ${kode}</td></tr>
-                <tr><td><b>Nama</b></td><td>: ${n}</td></tr>
-                <tr><td><b>Batch</b></td><td>: ${batch}</td></tr>
-                <tr><td><b>Qty</b></td><td>: <b style="color:${trType === 'IN' ? '#16a34a' : '#dc2626'}">${q}</b></td></tr>
-            </table>`;
+            
+            // Tentukan Tipe Data untuk Database
+            let trType = (t === 'IN') ? 'IN' : 'OUT'; 
+            let finalQty = q;
+
+            // Logika Khusus STOK OPNAME (ADJ)
+            if (t === 'ADJ') {
+                trType = 'ADJ'; // Tetapkan ADJ agar Pivot bisa membedakan
+                const adjType = document.getElementById('t_adj_type').value;
+                // Jika "Kurangi", paksa Qty jadi Negatif
+                finalQty = (adjType === 'OUT') ? -Math.abs(q) : Math.abs(q);
+            }
+
+            window.pendingData = { 
+                tgl: tglDB, ref, kode, batch: batch.toUpperCase(), 
+                exp: expDB, qty: finalQty, tipe: trType, ket, t: t 
+            };
+            
+            // Label Tampilan untuk Preview
+            let labelAct = t === 'ADJ' ? (finalQty > 0 ? 'STOK OPNAME (TAMBAH)' : 'STOK OPNAME (KURANGI)') : t;
+            
+            previewHTML = `
+                <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:5px; margin-bottom:10px;">
+                    <b style="color:var(--p);">KONFIRMASI:</b> ${labelAct}
+                </div>
+                <table style="width:100%; font-size:13px; border-collapse: collapse;">
+                    <tr><td width="35%" style="padding:4px 0;"><b>Tanggal</b></td><td>: ${tglRaw}</td></tr>
+                    <tr><td style="padding:4px 0;"><b>No. Ref</b></td><td>: ${ref}</td></tr>
+                    <tr><td style="padding:4px 0;"><b>Kode</b></td><td>: ${kode}</td></tr>
+                    <tr><td style="padding:4px 0;"><b>Nama</b></td><td>: ${n}</td></tr>
+                    <tr><td style="padding:4px 0;"><b>Batch</b></td><td>: ${batch.toUpperCase()}</td></tr>
+                    <tr><td style="padding:4px 0;"><b>Qty</b></td><td>: <b style="color:${finalQty > 0 ? '#16a34a' : '#dc2626'}">${finalQty}</b></td></tr>
+                    ${ket !== '-' ? `<tr><td style="padding:4px 0;"><b>Ket</b></td><td>: ${ket}</td></tr>` : ''}
+                </table>`;
         }
+        
+        // Render ke Modal Preview
         document.getElementById('previewContent').innerHTML = previewHTML;
         UI.showModal('modalPreview');
     },
