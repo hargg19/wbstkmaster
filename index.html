@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockMaster Pro v8.28 | Enterprise Edition</title>
+    <title>StockMaster Pro v8.27 | Enterprise Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css?v=8.28">
+    <link rel="stylesheet" href="style.css?v=8.27">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="is-public">
@@ -56,6 +56,7 @@
             
             <div class="auth-group">
                 <button id="btnTheme" class="btn-outline" style="margin-top: 0;" onclick="UI.toggleTheme()">🌙</button>
+                <button class="btn-outline" style="border-color: #2563eb; color: #2563eb; margin-top: 0; font-weight: bold; background: #eff6ff;" onclick="App.syncLoad()">Sync</button>
                 <button id="btnExportExcel" class="btn-export private" style="display:none" onclick="App.exportToExcel()">Export</button>
                 <button id="btnAuth" class="btn-primary" onclick="UI.openLogin()">Login</button>
                 <button id="btnLogout" class="btn-logout" onclick="Auth.logout()">Logout</button>
@@ -63,54 +64,17 @@
         </div>
 
         <header id="global-header">
-    
-</header>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Cari Kode atau Nama..." onkeyup="UI.refresh()">
+            </div>
+        </header>
 
-        <div id="tab-stok" class="tab-pane active">
-    <div class="card" style="margin-bottom: 10px; padding: 10px;">
-        <input type="text" id="searchInput" placeholder="Cari Kode atau Nama di Stok..." onkeyup="UI.refresh()" style="width: 100%; padding: 8px;">
-    </div>
-    
-    <div class="card overflow-x">
-        <table>
-            <thead>
-                <tr>
-                    <th width="20%" class="sortable" onclick="UI.sortStok('kode')">Kode <span id="sort_kode">▲</span></th>
-                    <th class="sortable" onclick="UI.sortStok('nama')">Nama Barang <span id="sort_nama"></span></th>
-                    <th width="15%" class="sortable" onclick="UI.sortStok('stok')">Saldo <span id="sort_stok"></span></th>
-                    <th>Status</th>
-                    <th id="th_aksi" style="display:none; width:80px;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="inventoryBody"></tbody>
-        </table>
-    </div>
-</div>
+        <div id="tab-stok" class="tab-pane active"><div class="card overflow-x"><table><thead><tr><th width="20%" class="sortable" onclick="UI.sortStok('kode')">Kode <span id="sort_kode">▲</span></th><th class="sortable" onclick="UI.sortStok('nama')">Nama Barang <span id="sort_nama"></span></th><th width="15%" class="sortable" onclick="UI.sortStok('stok')">Saldo <span id="sort_stok"></span></th><th>Status</th><th id="th_aksi" style="display:none; width:80px;">Aksi</th></tr></thead><tbody id="inventoryBody"></tbody></table></div></div>
+        
         <div id="tab-expiry" class="tab-pane"><div class="card overflow-x"><table><thead><tr><th width="15%">Kode</th><th>Nama Barang</th><th width="15%">Batch</th><th width="10%">Stok</th><th width="15%">Exp Date</th><th width="10%">Masa Max</th><th width="25%">Status Peringatan</th></tr></thead><tbody id="expiryTableBody"></tbody></table></div></div>
         
-        <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead>
-    <tr>
-        <th class="sortable" onclick="UI.sortDaily('ref','day-out')">Ref <span id="sort_dayout_ref"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('kode','day-out')">Kode <span id="sort_dayout_kode"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('nama','day-out')">Nama <span id="sort_dayout_nama"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('batch','day-out')">Batch <span id="sort_dayout_batch"></span></th>
-        <th>Qty</th>
-        <th>Ket</th>
-        <th style="width:80px">Aksi</th>
-    </tr>
-</thead><tbody id="dayinTableBody"></tbody></table></div></div>
-        
-        <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead>
-    <tr>
-        <th class="sortable" onclick="UI.sortDaily('ref','day-out')">Ref <span id="sort_dayout_ref"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('kode','day-out')">Kode <span id="sort_dayout_kode"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('nama','day-out')">Nama <span id="sort_dayout_nama"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('batch','day-out')">Batch <span id="sort_dayout_batch"></span></th>
-        <th>Qty</th>
-        <th>Ket</th>
-        <th style="width:80px">Aksi</th>
-    </tr>
-</thead><tbody id="dayoutTableBody"></tbody></table></div></div>
+        <div id="tab-day-in" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Masuk:</label><input type="text" id="f_day_in_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_in_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th><th>Aksi</th></tr></thead><tbody id="dayinTableBody"></tbody></table></div></div>
+        <div id="tab-day-out" class="tab-pane"><div class="card"><div class="form-row-compact"><div class="f-item"><label>Tanggal Keluar:</label><input type="text" id="f_day_out_tgl" placeholder="DD-MM-YYYY" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div><div class="f-item"><label>Cari:</label><input type="text" id="f_day_out_q" placeholder="Cari..." onkeyup="UI.refresh()"></div></div></div><div class="card overflow-x"><table><thead><tr><th>Ref</th><th>Kode</th><th>Nama Barang</th><th>Batch</th><th>Qty</th><th>Ket</th><th>Verif</th><th>Aksi</th></tr></thead><tbody id="dayoutTableBody"></tbody></table></div></div>
         
         <div id="tab-mutasi" class="tab-pane"><div class="card"><div class="form-row-compact">
             <div class="f-item"><label>Bulan:</label><select id="f_mutasi_m" onchange="UI.refresh()"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
@@ -134,19 +98,7 @@
                 <div class="f-item"><label>Nama:</label><div style="position:relative;"><input type="text" id="l_f_nama" oninput="UI.showAutoList('l_f_n')" onfocus="UI.showAutoList('l_f_n')" onkeydown="UI.handleAutoKey(event, 'l_f_n')" autocomplete="off" placeholder="Nama..."><div id="l_f_n_list" class="autocomplete-items"></div></div></div>
                 <div class="f-item"><label>Jenis:</label><select id="f_tipe"><option value="ALL">Semua</option><option value="IN">IN</option><option value="OUT">OUT</option></select></div><div class="f-item" style="display:flex; gap:5px; align-items:flex-end;"><button class="btn-primary" onclick="UI.refresh()">Filter</button><button class="btn-outline" style="margin-top:0;" onclick="UI.clearFilter('log')">Reset</button></div>
             </div></div>
-            <div class="card overflow-x"><table><thead>
-    <tr>
-        <th>Tgl</th>
-        <th>Ref</th>
-        <th class="sortable" onclick="UI.sortDaily('kode','log')">Kode <span id="sort_log_kode"></span></th>
-        <th class="sortable" onclick="UI.sortDaily('nama','log')">Nama <span id="sort_log_nama"></span></th>
-        <th>Batch</th>
-        <th>Qty</th>
-        <th>Tipe</th>
-        <th>Ket</th>
-        <th style="width:80px">Aksi</th>
-    </tr>
-</thead><tbody id="logTableBody"></tbody></table></div>
+            <div class="card overflow-x"><table><thead><tr><th>Tgl</th><th>Ref</th><th>Kode</th><th>Nama</th><th>Batch</th><th>Qty</th><th>Tipe</th><th>Ket</th><th>Verif</th><th>Aksi</th></tr></thead><tbody id="logTableBody"></tbody></table></div>
         </div>
     </main>
 
@@ -164,34 +116,14 @@
             <button class="btn-outline" onclick="UI.closeModal('modalLogin')">Batal</button>
         </div>
     </div>
-
-    <div id="modalTrx" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; pointer-events:none;">
-        <div class="modal-content" id="trxBody" style="border-radius:8px; margin:5% auto; width:90%; max-width:500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); overflow:visible; pointer-events:auto;">
-            </div>
-    </div>
-
-    <div id="modalPreview" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.7);">
-        <div class="modal-content sz-mini" id="previewBox" style="padding:0; border-radius:8px; margin:10% auto; width:90%; max-width:400px; overflow:hidden;">
-            <div id="previewHeader" style="cursor:grab; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);">
-                <span>Kroscek Data</span>
-                <span style="font-size:14px; color:#64748b;">✥ Geser</span>
-            </div>
-            <div style="padding: 15px;">
-                <div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6;  border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px; color:#334155;">
-                    </div>
-                <div style="display:flex; gap:10px;">
-                    <button id="btnConfirmSave" class="btn-primary" style="flex:1" onclick="App.executeSave()">Simpan</button>
-                    <button class="btn-outline" style="flex:1; margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="modalTrx" class="modal"><div class="modal-content" id="trxBody" style="overflow:visible;"></div></div>
+    <div id="modalPreview" class="modal" style="z-index: 1100;"><div class="modal-content sz-mini" id="previewBox" style="padding:0;"><div id="previewHeader" style="cursor:grab; background:#f1f5f9; padding:10px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--p);"><span>Kroscek Data</span><span style="font-size:14px; color:#64748b;">✥ Geser</span></div><div style="padding: 15px;"><div id="previewContent" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; background: transparent; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px;"></div><div style="display:flex; gap:10px;"><button id="btnConfirmSave" class="btn-primary" onclick="App.executeSave()" onkeydown="if(event.key==='Enter') App.executeSave()">Simpan</button><button class="btn-outline" style="margin-top:0;" onclick="UI.closeModal('modalPreview')">Batal Edit</button></div></div></div></div>
 
     <div id="modalMaster" class="modal">
         <div class="modal-content sz-mini">
             <h3 id="masterTitle">Master Barang</h3>
             <input type="hidden" id="m_k_old">
-            <label>Kode Barang:</label><input id="m_k" placeholder="FKxxx">
+            <label>Kode Barang:</label><input id="m_k" placeholder="benda padat">
             <label>Nama Barang:</label><input id="m_n">
             <label>Masa Simpan (Hari):</label><input id="m_m" type="number" placeholder="Contoh: 365">
             <div style="display:flex; gap:5px; margin-top:5px;">
@@ -202,15 +134,8 @@
         </div>
     </div>
     
-    <div id="modalImport" class="modal">
-        <div class="modal-content sz-large">
-            <h3>Import Massal</h3>
-            <textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea>
-            <button class="btn-primary" onclick="App.saveImport()">Import</button>
-            <button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button>
-        </div>
-    </div>
+    <div id="modalImport" class="modal"><div class="modal-content sz-large"><h3>Import Massal</h3><textarea id="importArea" rows="6" placeholder="Kode [Tab] Nama [Tab] Masa (Dalam Hari)"></textarea><button class="btn-primary" onclick="App.saveImport()">Import</button><button class="btn-outline" onclick="UI.closeModal('modalImport')">Tutup</button></div></div>
 
-    <script src="script.js?v=8.28"></script>
+    <script src="script.js?v=8.27"></script>
 </body>
 </html>
