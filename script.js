@@ -806,6 +806,10 @@ renderExpiry: () => {
         const mContent = document.getElementById('trxBody');
         if (!modal || !mContent) return alert("Error: Wadah Modal tidak ditemukan!");
 
+        // Pastikan modal tidak memblokir klik/scroll ke tabel belakang
+        modal.style.pointerEvents = "none"; 
+        mContent.style.pointerEvents = "auto";
+
         const todayUI = DateHelper.toUI(new Date().toISOString().split('T')[0]);
         
         // Atur ukuran dan tampilan modal agar tidak "kecil"
