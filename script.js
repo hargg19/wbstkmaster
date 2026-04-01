@@ -816,14 +816,19 @@ renderExpiry: () => {
         mContent.style.padding = '0';
         mContent.style.minWidth = '350px'; 
         mContent.style.maxWidth = '500px';
+        mContent.style.position = 'absolute'; // Wajib agar bisa digeser
+
+        // Reset posisi jika sebelumnya form sudah digeser-geser
+        if (typeof Draggable !== 'undefined') Draggable.reset('trxBody');
 
         let judul = "Form " + t;
         if(t === 'IN') judul = "Barang Masuk";
         else if(t === 'OUT') judul = "Barang Keluar";
         else if(t === 'ADJ') judul = "Stok Opname (ADJ)";
 
+        // Tambahkan cursor:grab agar terlihat bisa ditarik
         let h = `
-            <div id="trxHeader" style="background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
+            <div id="trxHeader" style="background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; font-weight:bold; cursor:grab;">
                 <span>${judul}</span>
                 <span onclick="UI.closeModal('modalTrx')" style="cursor:pointer; color:#ef4444;">✕</span>
             </div>
@@ -851,6 +856,9 @@ renderExpiry: () => {
                 </div>`;
         } else {
             h += `
+                <label>Stok Barang Total:</label>
+                <input id="t_stk_tot" readonly class="read-only" value="0">
+
                 <label>Pilih Batch:</label>
                 <select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')"><option value="">--Pilih Kode Dulu--</option></select>`;
             
@@ -862,7 +870,7 @@ renderExpiry: () => {
 
             h += `
                 <div style="display:flex; gap:10px;">
-                    <div style="flex:1"><label>Stok:</label><input id="t_stk_b" readonly class="read-only"></div>
+                    <div style="flex:1"><label>Stok per Batch:</label><input id="t_stk_b" readonly class="read-only"></div>
                     <div style="flex:1"><label>Qty:</label><input id="t_q" type="number"></div>
                 </div>
                 <label>Keterangan:</label><input id="t_ket" placeholder="-">`;
@@ -877,6 +885,11 @@ renderExpiry: () => {
 
         mContent.innerHTML = h;
         modal.style.display = 'block'; // PAKSA MUNCUL
+
+        // PANGGIL FUNGSI GESER BUATANMU SENDIRI DI SINI
+        if (typeof Draggable !== 'undefined') {
+            Draggable.init('trxBody', 'trxHeader');
+        }
     },
 
     findRef: () => {
