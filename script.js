@@ -886,6 +886,10 @@ renderExpiry: () => {
         mContent.innerHTML = h;
         modal.style.display = 'block'; // PAKSA MUNCUL
 
+	   // --- TAMBAHKAN BARIS INI (Baris Kunci) ---
+        mContent.style.left = '50%'; 
+        mContent.style.transform = 'translateX(-50%)';
+        // -
         // PANGGIL FUNGSI GESER BUATANMU SENDIRI DI SINI
         if (typeof Draggable !== 'undefined') {
             Draggable.init('trxBody', 'trxHeader');
