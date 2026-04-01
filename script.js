@@ -259,7 +259,6 @@ const UI = {
 
 
     showAutoList: (type, formType = '', e) => {
-        // 1. Abaikan jika hanya tombol navigasi (Panah/Enter/Tab)
         if (e && [38, 40, 13, 9].includes(e.keyCode)) return;
 
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
@@ -267,25 +266,21 @@ const UI = {
         const inp = document.getElementById(inpId); const listEl = document.getElementById(listId);
         if(!inp || !listEl) return;
 
-        // --- TAMBAHKAN LOGIKA PEMBERSIHAN INSTANT DI SINI ---
+        // --- REVISI: Gunakan UI.currentFocus agar sinkron dengan handleAutoKey ---
+        UI.currentFocus = -1; 
+
         if (['k', 'n'].includes(type)) {
-            // Jika ngetik di KODE, kosongkan NAMA. Jika ngetik di NAMA, kosongkan KODE.
             const targetId = type === 'k' ? 't_n' : 't_k';
             const targetEl = document.getElementById(targetId);
             if (targetEl) targetEl.value = ''; 
-            
-            // Kosongkan juga stok dan reset dropdown batch (biar tidak salah input)
             const elStk = document.getElementById('t_stk_tot') || document.getElementById('t_stk_b');
             if (elStk) elStk.value = '';
-            
             const bSelect = document.getElementById('t_b_sel');
             if (bSelect) bSelect.innerHTML = '<option value="">--Pilih Kode Dulu--</option>';
         }
-        // --- AKHIR LOGIKA PEMBERSIHAN ---
 
         const ms = DB.get('m') || []; 
         const val = inp.value.trim().toUpperCase(); 
-        currentFocus = -1; 
 
         if(val === '') {
             listEl.style.display = 'none'; return;
@@ -302,30 +297,29 @@ const UI = {
 
     // --- Perbaikan handleAutoKey ---
 handleAutoKey: (e, type, formType) => {
-    const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
-    const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
-    
-    let x = document.getElementById(listId);
-    if (x) x = x.getElementsByTagName("div");
-    if (!x || x.length === 0) return;
+        const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
+        const listId = (inpId === 't_k' ? 't_k_list' : (inpId === 't_n' ? 't_n_list' : type + '_list'));
+        
+        let x = document.getElementById(listId);
+        if (x) x = x.getElementsByTagName("div");
+        if (!x || x.length === 0) return;
 
-    if (e.keyCode == 40) { // BAWAH
-        currentFocus++;
-        UI.addActive(x);
-    } else if (e.keyCode == 38) { // ATAS
-        currentFocus--;
-        UI.addActive(x);
-    } else if (e.keyCode == 13 || e.keyCode == 9) { // ENTER atau TAB
-        e.preventDefault();
-        
-        // Logika: Jika tidak ada yang disorot (currentFocus -1), pilih index 0 (paling atas)
-        let targetIndex = currentFocus > -1 ? currentFocus : 0;
-        
-        if (x[targetIndex]) {
-            x[targetIndex].click(); // Pilih item
+        if (e.keyCode == 40) { // BAWAH
+            UI.currentFocus++;
+            UI.addActive(x);
+        } else if (e.keyCode == 38) { // ATAS
+            UI.currentFocus--;
+            UI.addActive(x);
+        } else if (e.keyCode == 13 || e.keyCode == 9) { // ENTER atau TAB
+            // Pilih index 0 jika user belum sempat menekan panah bawah
+            let targetIndex = UI.currentFocus > -1 ? UI.currentFocus : 0;
+            
+            if (x[targetIndex]) {
+                if (e.keyCode == 9) e.preventDefault(); // Cegah pindah input sebelum pilih
+                x[targetIndex].click(); 
+            }
         }
-    }
-},
+    },
 
     addActive: (x) => {
         if (!x) return false;
