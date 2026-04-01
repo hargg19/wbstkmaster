@@ -258,7 +258,7 @@ const UI = {
     },
 
 
-    showAutoList: (type, formType = '', e) => {
+   showAutoList: (type, formType = '', e) => {
         if (e && [38, 40, 13, 9].includes(e.keyCode)) return;
 
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
@@ -266,7 +266,7 @@ const UI = {
         const inp = document.getElementById(inpId); const listEl = document.getElementById(listId);
         if(!inp || !listEl) return;
 
-        // --- REVISI: Gunakan UI.currentFocus agar sinkron dengan handleAutoKey ---
+        // Reset fokus agar TAB/ENTER selalu ambil baris pertama jika tidak ada navigasi panah
         UI.currentFocus = -1; 
 
         if (['k', 'n'].includes(type)) {
@@ -311,11 +311,12 @@ handleAutoKey: (e, type, formType) => {
             UI.currentFocus--;
             UI.addActive(x);
         } else if (e.keyCode == 13 || e.keyCode == 9) { // ENTER atau TAB
-            // Pilih index 0 jika user belum sempat menekan panah bawah
+            // Ambil index 0 jika user belum sempat menekan panah bawah
             let targetIndex = UI.currentFocus > -1 ? UI.currentFocus : 0;
             
             if (x[targetIndex]) {
-                if (e.keyCode == 9) e.preventDefault(); // Cegah pindah input sebelum pilih
+                // Cegah kursor pindah input sebelum fungsi click() selesai memproses data
+                if (e.keyCode == 9) e.preventDefault(); 
                 x[targetIndex].click(); 
             }
         }
@@ -324,13 +325,16 @@ handleAutoKey: (e, type, formType) => {
     addActive: (x) => {
         if (!x) return false;
         // Bersihkan class active dari semua item
-        for (let i = 0; i < x.length; i++) x[i].classList.remove("autocomplete-active");
+        for (let i = 0; i < x.length; i++) {
+            x[i].classList.remove("autocomplete-active");
+        }
 
-        if (currentFocus >= x.length) currentFocus = 0;
-        if (currentFocus < 0) currentFocus = (x.length - 1);
+        // --- REVISI: Gunakan UI.currentFocus agar sinkron ---
+        if (UI.currentFocus >= x.length) UI.currentFocus = 0;
+        if (UI.currentFocus < 0) UI.currentFocus = (x.length - 1);
         
-        x[currentFocus].classList.add("autocomplete-active");
-        x[currentFocus].scrollIntoView({ block: "nearest" });
+        x[UI.currentFocus].classList.add("autocomplete-active");
+        x[UI.currentFocus].scrollIntoView({ block: "nearest" });
     },
 
 removeActive: (x) => {
@@ -353,15 +357,12 @@ removeActive: (x) => {
             if(elN) elN.value = item.nama;
 
             // 2. Sembunyikan List Dropdown
-            const listK = document.getElementById('t_k_list');
-            const listN = document.getElementById('t_n_list');
-            if(listK) listK.style.display = 'none'; 
-            if(listN) listN.style.display = 'none';
+            document.querySelectorAll('.autocomplete-items').forEach(el => el.style.display = 'none');
 
             // 3. Jalankan Sinkronisasi (Data Batch/Stok)
             UI.syncTrx('k', formType);
 
-            // 4. Pindahkan Fokus Kursor (Delay sedikit agar DOM siap)
+            // 4. Pindahkan Fokus Kursor secara otomatis
             setTimeout(() => {
                 if(formType === 'IN') { 
                     const elB = document.getElementById('t_b');
