@@ -554,44 +554,40 @@ removeActive: (x) => {
     },
 
     renderDaily: (id, tipe, ms, l) => {
-        // 1. Cek apakah Tab Pane ada
         const pane = document.getElementById('tab-' + id);
         if (!pane) return; 
-        if (!pane.classList.contains('active')) return;
+        
+        // --- TIPS: Jangan kunci dengan .active agar render tetap jalan saat switch tab ---
 
-        // 2. Sesuaikan ID Input
-        const baseID = id.replace('-', '_'); // day_in
-        const altID = id.replace('-', '');   // dayin
+        const baseID = id.replace(/-/g, '_'); 
+        const altID = id.replace(/-/g, '');   
         
         const tglInput = document.getElementById(`f_${baseID}_tgl`) || document.getElementById(`f_${altID}_tgl`);
         const qInput = document.getElementById(`f_${baseID}_q`) || document.getElementById(`f_${altID}_q`);
         
-        if (!tglInput || !qInput) {
-            console.warn(`Filter input untuk ${id} tidak ditemukan.`);
-            return;
-        }
+        if (!tglInput) return;
 
         const tglFilter = DateHelper.toDB(tglInput.value);
-        const searchVal = qInput.value.toUpperCase();
+        const searchVal = qInput ? qInput.value.toUpperCase() : "";
 
-        // 3. Filter Data
+        // 1. FILTER DATA
         let filtered = l.filter(x => {
             const isMatch = x.tgl === tglFilter && x.tipe === tipe;
             const m = ms.find(it => it.kode === x.kode) || {};
             const isSearch = (x.kode || '').toUpperCase().includes(searchVal) || 
-                             (m.nama || '').toUpperCase().includes(searchVal);
+                             (m.nama || '').toUpperCase().includes(searchVal) ||
+                             (x.ref || '').toUpperCase().includes(searchVal);
+            
             const isNotAdj = x.tipe !== 'ADJ';
             const isNotReturn = !(tipe === 'IN' && x.ref && String(x.ref).endsWith('-RET'));
             return isMatch && isSearch && isNotAdj && isNotReturn;
         });
 
-        // 4. Urutkan Data
+        // 2. SORTING (Tetap Utuh)
         filtered.sort((a, b) => {
             if (a.v !== b.v) return a.v ? 1 : -1;
-
             let col = UI.sortDailyCol || 'ref';
             let vA, vB;
-            
             if (col === 'nama') {
                 vA = (ms.find(m => m.kode === a.kode)?.nama || "").toUpperCase();
                 vB = (ms.find(m => m.kode === b.kode)?.nama || "").toUpperCase();
@@ -599,27 +595,29 @@ removeActive: (x) => {
                 vA = (a[col] || "").toString().toUpperCase();
                 vB = (b[col] || "").toString().toUpperCase();
             }
-
             if (vA < vB) return UI.sortDailyAsc ? -1 : 1;
             if (vA > vB) return UI.sortDailyAsc ? 1 : -1;
             return 0;
         });
 
-        // 5. Update Indikator Panah di Header
+        // 3. UPDATE PANAH SORTING
         const cols = ['ref', 'kode', 'nama', 'batch'];
         cols.forEach(c => {
             const sortEl = document.getElementById(`sort_${baseID}_${c}`) || document.getElementById(`sort_${altID}_${c}`);
             if (sortEl) sortEl.innerHTML = (UI.sortDailyCol === c) ? (UI.sortDailyAsc ? ' ▲' : ' ▼') : '';
         });
 
-        // 6. Render ke Table Body
         const bodyId = `${altID}TableBody`; 
         const bodyEl = document.getElementById(bodyId);
         if (!bodyEl) return;
 
-        // --- CEK ROLE USER ---
-        const currentUser = DB.get('currentUser') || JSON.parse(localStorage.getItem('currentUser') || '{}');
-        const isAdmin = currentUser.role === 'admin';
+        const isAdmin = (DB.get('currentUser')?.role === 'admin');
+
+        // 4. RENDER HTML
+        if (filtered.length === 0) {
+            bodyEl.innerHTML = `<tr><td colspan="7" align="center" style="padding:20px; color:#94a3b8;">Tidak ada data untuk tanggal ini</td></tr>`;
+            return;
+        }
 
         bodyEl.innerHTML = filtered.map(x => {
             const m = ms.find(i => i.kode === x.kode);
@@ -629,7 +627,6 @@ removeActive: (x) => {
                 dQty = x.qty - totalRet;
             }
 
-            // KONDISI AKSI: Admin dapat Checkbox & Hapus, Staff hanya lihat indikator
             const actionArea = isAdmin ? `
                 <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
                     <input type="checkbox" ${x.v ? 'checked' : ''} style="cursor:pointer" onchange="UI.toggleVerify('${x.id}')">
@@ -643,7 +640,7 @@ removeActive: (x) => {
                     <td><b>${x.kode}</b></td>
                     <td>${m ? m.nama : '<i>Master Hilang</i>'}</td>
                     <td>${x.batch || '-'}</td>
-                    <td><b>${dQty}</b> ${dQty !== x.qty ? `<br><small style="color:red">(Ret: ${x.qty - dQty})</small>` : ''}</td>
+                    <td align="right"><b>${Math.abs(dQty)}</b></td>
                     <td>${x.ket || '-'}</td>
                     <td align="center">${actionArea}</td>
                 </tr>`;
