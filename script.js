@@ -43,7 +43,7 @@ const DB = {
             UI.showToast("❌ Gagal sinkronisasi data server.");
         }
     },
-	subscribe: () => {
+    subscribe: () => {
         // Mendengarkan semua event (INSERT, UPDATE, DELETE) di kedua tabel
         sb.channel('realtime-db')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'master_barang' }, payload => {
@@ -129,12 +129,12 @@ const Engine = {
     calculate: () => {
         const logs = DB.get('l') || []; let res = {};
         // --- Kode Sesudah (Perubahan di Baris 108) ---
-	logs.forEach(x => {
-			const k = `${x.kode}|${x.batch}`; if(!res[k]) res[k] = {...x, stok: 0};
-			// Baris Kunci: Simpan tanggal expired jika tipe transaksi adalah IN
-			if(x.tipe === 'IN' && x.exp) res[k].exp = x.exp; 
-			x.tipe === 'IN' ? res[k].stok += x.qty : res[k].stok -= x.qty;
-			});
+    logs.forEach(x => {
+            const k = `${x.kode}|${x.batch}`; if(!res[k]) res[k] = {...x, stok: 0};
+            // Baris Kunci: Simpan tanggal expired jika tipe transaksi adalah IN
+            if(x.tipe === 'IN' && x.exp) res[k].exp = x.exp; 
+            x.tipe === 'IN' ? res[k].stok += x.qty : res[k].stok -= x.qty;
+            });
         return Object.values(res).filter(x => x.stok > 0);
     }
 };
@@ -142,13 +142,13 @@ const Engine = {
 const UI = {
     sortCol: 'kode', sortAsc: true, 
     sortMutasiCol: 'kode', sortMutasiAsc: true,
-	sortDayCol: 'tgl', 
+    sortDayCol: 'tgl', 
     sortDayAsc: false,
-	sortDayCol: 'ref', 
+    sortDayCol: 'ref', 
     sortDayAsc: true,
     currentFocus: -1,
-	
-	sortDay: (col) => {
+    
+    sortDay: (col) => {
         if (UI.sortDayCol === col) {
             UI.sortDayAsc = !UI.sortDayAsc;
         } else {
@@ -157,7 +157,7 @@ const UI = {
         }
         UI.refresh();
     },
-	
+    
     toggleTheme: () => {
         const btn = document.getElementById('btnTheme');
         if (document.body.classList.contains('dark-mode')) {
@@ -294,237 +294,6 @@ expandDate: (el) => {
         }
     },
 
-
-editLog: (index) => {
-    const logs = DB.get('l');
-    const logEntry = logs[index];
-
-    if (!logEntry) {
-        UI.showToast("❌ Data tidak ditemukan!");
-        return;
-    }
-
-    const masterItems = DB.get('m');
-    const itemName = (masterItems.find(m => m.kode === logEntry.kode) || {}).nama || '';
-
-    
-    UI.openTrx(logEntry.tipe);
-
-    setTimeout(() => {
-        const waitForDOM = () => {
-           
-            const tglInput = document.getElementById('t_tgl');
-            const refInput = document.getElementById('t_ref');
-            const kInput = document.getElementById('t_k');
-            const nInput = document.getElementById('t_n');
-            
-            const qInput = document.getElementById('t_q');
-            const ketInput = document.getElementById('t_ket');
-
-            // Cek apakah elemen-elemen input umum ditemukan
-            if (tglInput && refInput && kInput && nInput && qInput && ketInput) {
-                 // Semua elemen umum ditemukan, lanjutkan pengisian
-                 tglInput.value = DateHelper.toUI(logEntry.tgl);
-                 refInput.value = logEntry.ref;
-                 kInput.value = logEntry.kode;
-                 nInput.value = itemName;
-                 // Qty dikunci nanti, tapi tetap isi dulu
-                 qInput.value = logEntry.qty;
-                 ketInput.value = logEntry.ket || '';
-
-                 // --- LOGIKA KHUSUS BERDASARKAN TIPE LOG ---
-                 if (logEntry.tipe === 'IN') {
-                      const bInput = document.getElementById('t_b');
-                      const expInput = document.getElementById('t_exp'); // Expired untuk IN
-
-                      if (bInput) {
-                           bInput.value = logEntry.batch || '';
-                      } else {
-                           console.warn("Input batch 't_b' tidak ditemukan untuk log IN.");
-                      }
-
-                      if (expInput) {
-                           if (logEntry.exp) {
-                               expInput.value = DateHelper.toUI(logEntry.exp);
-                           } else {
-                               expInput.value = ''; // Kosongkan jika tidak ada
-                           }
-                      } else {
-                           console.warn("Input expired 't_exp' tidak ditemukan untuk log IN.");
-                      }
-                 } else if (logEntry.tipe === 'OUT' || logEntry.tipe === 'ADJ') {
-                      const bSelect = document.getElementById('t_b_sel');
-                      const stokBInput = document.getElementById('t_stk_b'); // Stok (Batch) untuk OUT/ADJ
-
-                      if (bSelect) {
-                           // Isi select batch dengan batch dari log
-                           bSelect.value = logEntry.batch || '';
-                           // Panggil syncTrx untuk mengisi stok batch terkait batch yang dipilih
-                           if (stokBInput) {
-                                // Tunggu sebentar agar select benar-benar diperbarui sebelum syncTrx
-                                setTimeout(() => {
-                                    UI.syncTrx('b', logEntry.tipe);
-                                }, 50);
-                           }
-                      } else {
-                           console.warn(`Select batch 't_b_sel' tidak ditemukan untuk log ${logEntry.tipe}.`);
-                           // Jika select tidak ditemukan, kita tetap lanjutkan, bisa diedit
-                      }
-
-                 } else if (logEntry.tipe === 'RET') {
-                      // Form RET tidak diedit lewat sini (karena kompleksitasnya)
-                      UI.showToast("⚠️ Edit untuk transaksi Return belum didukung.");
-                      UI.closeModal('modalTrx');
-                      return; // Hentikan eksekusi untuk RET
-                 } else {
-                      // Tipe log tidak dikenal
-                      console.warn("Tipe log tidak dikenal:", logEntry.tipe);
-                      UI.showToast("⚠️ Tipe log tidak dikenal. Tidak bisa diedit.");
-                      UI.closeModal('modalTrx');
-                      return; // Hentikan eksekusi untuk tipe tidak dikenal
-                 }
-
-                 // Kunci field kode, nama, dan qty setelah semua pengisian selesai
-                 kInput.readOnly = true;
-                 nInput.readOnly = true;
-                 qInput.readOnly = true; // Pastikan Qty juga dikunci
-
-                 // Simpan ID log yang sedang diedit
-                 window.currentlyEditingLogIndex = index;
-                 window.currentlyEditingOriginalData = {...logEntry}; // Salinan data asli
-
-                 UI.showToast("📝 Edit mode aktif. Simpan untuk update.");
-            } else {
-                // Elemen belum siap, tunggu lagi satu frame
-                requestAnimationFrame(waitForDOM);
-            }
-        };
-
-        // Mulai menunggu DOM siap
-        requestAnimationFrame(waitForDOM);
-
-    }, 100); // Timeout 100ms untuk memastikan openTrx selesai sebelum rAF
-},
-
-		deleteLog: async (id) => {
-        console.log("Parameter ID yang diterima:", id);
-
-        // Cek apakah ID benar-benar ada (bukan undefined, null, atau string kosong)
-        if (id === undefined || id === null || id === "") {
-            UI.showToast("❌ Error: ID Transaksi tidak terbaca.");
-            return;
-        }
-
-        if (!confirm(`Hapus transaksi ID: ${id}?`)) return;
-        
-        try {
-            // Gunakan string untuk bigint agar aman
-            const targetId = id.toString();
-
-            const { data, error } = await sb
-                .from('transaksi_log')
-                .delete()
-                .eq('id', targetId)
-                .select();
-
-            if (error) throw error;
-
-            if (!data || data.length === 0) {
-                UI.showToast("⚠️ Gagal: Data sudah tidak ada atau ID salah.");
-            } else {
-                UI.showToast("✅ Berhasil dihapus!");
-            }
-
-            await DB.load();
-            UI.refresh();
-
-        } catch (err) {
-            console.error("Gagal hapus:", err);
-            UI.showToast("❌ Gagal: " + err.message);
-        }
-    },
-
-saveEditedLog: async () => {
-    // Cek apakah data asli yang sedang diedit tersedia
-    if (!window.currentlyEditingOriginalData) {
-         UI.showToast("❌ Tidak ada data yang sedang diedit.");
-         return;
-    }
-
-    const originalData = window.currentlyEditingOriginalData;
-
-    // Ambil data baru dari form
-    const newData = {
-        tgl: DateHelper.toDB(document.getElementById('t_tgl').value),
-        ref: document.getElementById('t_ref').value.trim(),
-        ket: document.getElementById('t_ket').value.trim()
-    };
-
-    // Ambil batch & exp sesuai tipe
-    if (originalData.tipe === 'IN') {
-        newData.batch = document.getElementById('t_b').value.trim();
-        newData.exp = document.getElementById('t_exp').value.trim() ? DateHelper.toDB(document.getElementById('t_exp').value.trim()) : null;
-    } else {
-        // Untuk OUT atau ADJ
-        const bSel = document.getElementById('t_b_sel');
-        newData.batch = bSel ? bSel.value : originalData.batch;
-        newData.exp = null;
-    }
-
-    if (!newData.tgl || !newData.ref) {
-         UI.showToast("❌ Tgl dan Ref wajib diisi.");
-         return;
-    }
-
-    try {
-        // Update ke Supabase berdasarkan ID unik
-        const { error } = await sb.from('transaksi_log').update({
-             tgl: newData.tgl,
-             ref: newData.ref,
-             batch: newData.batch,
-             exp: newData.exp,
-             ket: newData.ket
-        }).eq('id', originalData.id); // Gunakan ID asli sebagai kunci update
-
-        if (error) throw error;
-
-        await DB.load();
-        UI.refresh();
-        UI.closeModal('modalTrx');
-
-        // Reset variabel state edit
-        window.currentlyEditingOriginalData = undefined;
-        UI.showToast("💾 Log berhasil diperbarui!");
-
-    } catch (err) {
-        console.error("Gagal update log:", err);
-        UI.showToast("❌ Gagal update log: " + err.message);
-    }
-},
-deleteLog: async (id) => {
-    if (!id || id === "undefined") return UI.showToast("❌ ID tidak valid");
-    if (!confirm(`Hapus transaksi ID: ${id}?`)) return;
-    
-    try {
-        // Hapus menggunakan id asli dari database
-        const { data, error } = await sb.from('transaksi_log')
-            .delete()
-            .eq('id', id.toString()) 
-            .select();
-        
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error("Data sudah tidak ada di server");
-
-        UI.showToast("✅ Berhasil dihapus");
-        
-        await DB.load();
-        UI.refresh();
-    } catch (err) {
-        console.error("Gagal hapus:", err);
-        UI.showToast("❌ Gagal: " + err.message);
-    }
-},
-
 toggleVerify: async (id) => {
     // Cari data di local cache 'l' berdasarkan ID asli
     const logs = DB.get('l') || [];
@@ -553,11 +322,11 @@ toggleVerify: async (id) => {
 },
 
 
-   refresh: () => {
+  refresh: () => {
     // 1. Ambil data & hitung stok
     const ms = DB.get('m') || []; 
     const l = DB.get('l') || []; 
-    const act = Engine.calculate(); 
+    const act = Engine.calculate(); // Pastikan Engine.calculate() return array berisi {kode, stok, ...}
 
     const searchEl = document.getElementById('searchInput'); 
     const qG = searchEl ? searchEl.value.toUpperCase() : '';
@@ -573,209 +342,238 @@ toggleVerify: async (id) => {
         return el && el.classList.contains('active');
     };
 
-    // 2. Render Tab STOK
+    // --- TAB STOK (LOGIKA STATUS INTUITIF) ---
     if(isTabActive('stok')) {
         let stokData = ms.filter(m => (m.kode||'').toUpperCase().includes(qG) || (m.nama||'').toUpperCase().includes(qG)).map(m => {
-            const bts = act.filter(b => b.kode === m.kode), ttl = bts.reduce((a,b)=>a+b.stok, 0); 
+            const bts = act.filter(b => b.kode === m.kode);
+            const ttl = bts.reduce((a, b) => a + b.stok, 0); 
             return { kode: m.kode || '-', nama: m.nama || '-', stok: ttl };
         });
+
+        // Sorting
         stokData.sort((a, b) => {
             let vA = a[UI.sortCol]; let vB = b[UI.sortCol];
             if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
-            if(vA < vB) return UI.sortAsc ? -1 : 1; if(vA > vB) return UI.sortAsc ? 1 : -1; return 0;
+            if(UI.sortAsc) return vA < vB ? -1 : (vA > vB ? 1 : 0);
+            return vA > vB ? -1 : (vA < vB ? 1 : 0);
         });
+
         const invBody = document.getElementById('inventoryBody');
         if(invBody) {
             invBody.innerHTML = stokData.map(m => {
+                // LOGIKA STATUS PRIORITAS STOK
+                let statusTag = "";
+                if (m.stok <= 0) {
+                    statusTag = '<span class="badge badge-danger">🚫 HABIS</span>';
+                } else if (m.stok <= 15) {
+                    statusTag = '<span class="badge badge-error">🚨 KRITIS</span>';
+                } else if (m.stok <= 25) {
+                    statusTag = '<span class="badge badge-warning">⚠️ MENIPIS</span>';
+                } else {
+                    statusTag = '<span class="badge badge-success">✅ AMAN</span>';
+                }
+
                 let actionBtn = isAdmin ? `<td style="text-align:center;"><button class="btn-outline" style="padding:2px 8px; font-size:11px; margin:0;" onclick="App.editMaster('${m.kode}')">✏️ Edit</button></td>` : '';
-                return `<tr><td><b>${m.kode}</b></td><td>${m.nama}</td><td>${m.stok}</td><td>${m.stok > 0 ? '<span class="txt-m">Aktif</span>' : '-'}</td>${actionBtn}</tr>`;
+                
+                return `<tr>
+                    <td><b>${m.kode}</b></td>
+                    <td>${m.nama}</td>
+                    <td align="right"><b>${m.stok}</b></td>
+                    <td align="center">${statusTag}</td>
+                    ${actionBtn}
+                </tr>`;
             }).join('');
         }
         ['kode', 'nama', 'stok'].forEach(c => { const el = document.getElementById(`sort_${c}`); if(el) el.innerHTML = UI.sortCol === c ? (UI.sortAsc ? '▲' : '▼') : ''; });
     }
 
-    // 3. Render Tab Harian (Hanya jika tab tersebut ADA dan AKTIF)
+    // --- RENDER TAB LAINNYA ---
     if(isTabActive('day-in')) UI.renderDaily('day-in', 'IN', ms, l); 
     if(isTabActive('day-out')) UI.renderDaily('day-out', 'OUT', ms, l);
-    
-    // 4. Render Tab Lainnya dengan Pengecekan Aman
-    if (isTabActive('mutasi')) UI.renderMutasiPivot(ms, l);
-    if (isTabActive('batch')) UI.renderBatch(ms, act);
-    if (isTabActive('log')) UI.renderLog(ms, l);
-    if (isTabActive('expiry')) UI.renderExpiry();
+    if(isTabActive('mutasi')) UI.renderMutasiPivot(ms, l);
+    if(isTabActive('batch')) UI.renderBatch(ms, act);
+    if(isTabActive('log')) UI.renderLog(ms, l);
+    if(isTabActive('expiry')) UI.renderExpiry();
 },
 
-    renderMutasiPivot: (ms, l) => {
-        const selM = document.getElementById('f_mutasi_m'); const selY = document.getElementById('f_mutasi_y');
-        if(!selM || !selY) return;
-        const m = parseInt(selM.value), y = parseInt(selY.value), days = new Date(y, m, 0).getDate(), q = document.getElementById('f_mutasi_q').value.toUpperCase();
-        
+   renderMutasiPivot: (ms, l) => {
+        const selM = document.getElementById('f_mutasi_m'); 
+        const selY = document.getElementById('f_mutasi_y');
+        if (!selM || !selY) return;
+
+        const m = parseInt(selM.value);
+        const y = parseInt(selY.value);
+        const days = new Date(y, m, 0).getDate();
+        const q = (document.getElementById('f_mutasi_q')?.value || "").toUpperCase();
+
         const getArrow = (col) => UI.sortMutasiCol === col ? (UI.sortMutasiAsc ? ' ▲' : ' ▼') : '';
-        let h1 = `<tr><th rowspan="2" class="sticky-col k-kode sortable" onclick="UI.sortMutasi('kode')">Kode${getArrow('kode')}</th><th rowspan="2" class="sticky-col k-nama sortable" onclick="UI.sortMutasi('nama')">Nama Barang${getArrow('nama')}</th><th rowspan="2" class="sticky-col k-awal" style="background-color: var(--bg-awal);">Awal</th>`; 
+
+        // 1. RENDER HEADER (Hanya IN/OUT per hari)
+        let h1 = `<tr><th rowspan="2" class="sticky-col k-kode sortable" onclick="UI.sortMutasi('kode')">Kode${getArrow('kode')}</th><th rowspan="2" class="sticky-col k-nama sortable" onclick="UI.sortMutasi('nama')">Nama Barang${getArrow('nama')}</th><th rowspan="2" class="sticky-col k-awal" style="background-color: var(--bg-awal);">Awal</th>`;
         let h2 = `<tr>`;
-        for(let i=1; i<=days; i++) { h1 += `<th colspan="2" class="day-header">${i}</th>`; h2 += `<th class="sub-col" style="background-color: var(--bg-in);">M</th><th class="sub-col" style="background-color: var(--bg-out);">K</th>`; }
-        h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" class="sortable" onclick="UI.sortMutasi('akhir')" style="background-color: var(--bg-akhir);">Akhir${getArrow('akhir')}</th></tr>`; 
+        for (let i = 1; i <= days; i++) {
+            h1 += `<th colspan="2" class="day-header">${i}</th>`;
+            h2 += `<th class="sub-col" style="background-color: var(--bg-in);">M</th><th class="sub-col" style="background-color: var(--bg-out);">K</th>`;
+        }
+        h1 += `<th rowspan="2">IN</th><th rowspan="2">OUT</th><th rowspan="2" class="sortable" onclick="UI.sortMutasi('akhir')" style="background-color: var(--bg-akhir);">Akhir${getArrow('akhir')}</th></tr>`;
         document.getElementById('mutasiHeader').innerHTML = h1 + h2 + `</tr>`;
-        
-        let pivotData = ms.filter(m_ => (m_.kode||'').includes(q) || (m_.nama||'').toUpperCase().includes(q)).map(it => {
-            let aw = 0, ti = 0, to = 0, adjTotal = 0; 
-            let dM = Array(days+1).fill(0), dK = Array(days+1).fill(0);
-            
+
+        // 2. OLAH DATA PIVOT (Hapus logika ADJ & RET)
+        let pivotData = ms.filter(m_ => (m_.kode || '').includes(q) || (m_.nama || '').toUpperCase().includes(q)).map(it => {
+            let aw = 0, ti = 0, to = 0;
+            let dM = Array(days + 1).fill(0), dK = Array(days + 1).fill(0);
+
             l.filter(x => x.kode === it.kode).forEach(log => {
-                const ld = new Date(log.tgl), ly = ld.getFullYear(), lm = ld.getMonth()+1;
-                
-                // 1. Logika Saldo Awal (Bulan-bulan sebelumnya)
+                const ld = new Date(log.tgl);
+                const ly = ld.getFullYear();
+                const lm = ld.getMonth() + 1;
+                const day = ld.getDate();
+
+                // --- SALDO AWAL (Bulan Lalu) ---
                 if (ly < y || (ly === y && lm < m)) {
-                    // Masukkan IN dan ADJ positif ke penambah saldo awal
-                    if (log.tipe === 'IN' || (log.tipe === 'ADJ' && log.qty > 0)) {
-                        aw += log.qty;
-                    } else {
-                        // Sisanya (OUT, RET, ADJ negatif) pengurang saldo awal
-                        aw -= Math.abs(log.qty);
-                    }
+                    if (log.tipe === 'IN') aw += log.qty;
+                    else if (log.tipe === 'OUT') aw -= log.qty;
                 } 
-                
-                // 2. Logika Harian (Bulan berjalan)
-                else if (ly === y && lm === m) { 
-                    const day = ld.getDate();
-                    
-                    // KHUSUS ADJ: Hanya pengaruhi saldo (adjTotal), JANGAN isi dM/dK
-                    if (log.tipe === 'ADJ') {
-                        adjTotal += log.qty;
-                    } 
-                    // LOGIKA RETURN
-                    else if (log.ref && String(log.ref).endsWith('-RET')) {
-                        dK[day] -= log.qty; 
-                        to -= log.qty;      
-                    } 
-                    // LOGIKA IN (Masuk Reguler)
-                    else if (log.tipe === 'IN') { 
-                        dM[day] += log.qty; 
-                        ti += log.qty; 
-                    } 
-                    // LOGIKA OUT (Keluar Reguler)
-                    else { 
-                        dK[day] += log.qty; 
-                        to += log.qty; 
-                    } 
+                // --- LOGIKA HARIAN (Hanya IN & OUT) ---
+                else if (ly === y && lm === m) {
+                    if (log.tipe === 'IN') {
+                        dM[day] += log.qty;
+                        ti += log.qty;
+                    } else if (log.tipe === 'OUT') {
+                        dK[day] += log.qty;
+                        to += log.qty;
+                    }
                 }
             });
 
-            return { 
-                kode: it.kode, 
-                nama: it.nama, 
-                awal: aw, 
-                masuk: ti, 
-                keluar: to, 
-                // Rumus Akhir: (Awal + Masuk - Keluar) + Penyesuaian Opname
-                akhir: (aw + ti - to + adjTotal), 
-                harianM: dM, 
-                harianK: dK 
+            return {
+                kode: it.kode, nama: it.nama, awal: aw, masuk: ti, keluar: to,
+                akhir: (aw + ti - to), harianM: dM, harianK: dK
             };
         });
 
-        pivotData.sort((a, b) => {
-            let vA = a[UI.sortMutasiCol]; let vB = b[UI.sortMutasiCol];
-            if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
-            if(vA < vB) return UI.sortMutasiAsc ? -1 : 1; if(vA > vB) return UI.sortMutasiAsc ? 1 : -1; return 0;
-        });
+        // 3. LOGIKA SORTING
+        if (UI.sortMutasiCol) {
+            pivotData.sort((a, b) => {
+                let vA = a[UI.sortMutasiCol], vB = b[UI.sortMutasiCol];
+                if (typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
+                return UI.sortMutasiAsc ? (vA < vB ? -1 : 1) : (vA > vB ? -1 : 1);
+            });
+        }
 
+        // 4. RENDER BODY
         document.getElementById('mutasiTableBody').innerHTML = pivotData.map(row => {
-            let htmlRow = `<tr><td class="sticky-col k-kode"><b>${row.kode}</b></td><td class="sticky-col k-nama">${row.nama}</td><td class="sticky-col k-awal" style="background-color: var(--bg-awal);">${row.awal}</td>`;
-            for(let i=1; i<=days; i++) { 
-                // Nilai 0 atau kosong tidak ditampilkan agar tabel bersih
-                const valM = row.harianM[i] || '';
-                const valK = row.harianK[i] || '';
-                htmlRow += `<td class="sub-col txt-m" style="background-color: var(--bg-in);">${valM}</td><td class="sub-col txt-k" style="background-color: var(--bg-out);">${valK}</td>`; 
+            let htmlRow = `<tr>
+                <td class="sticky-col k-kode"><b>${row.kode}</b></td>
+                <td class="sticky-col k-nama">${row.nama}</td>
+                <td class="sticky-col k-awal" style="background-color: var(--bg-awal); text-align:center;">${row.awal}</td>`;
+            
+            for (let i = 1; i <= days; i++) {
+                htmlRow += `
+                    <td class="sub-col txt-m" style="background-color: var(--bg-in);">${row.harianM[i] || ''}</td>
+                    <td class="sub-col txt-k" style="background-color: var(--bg-out);">${row.harianK[i] || ''}</td>`;
             }
-            return htmlRow + `<td>${row.masuk}</td><td>${row.keluar}</td><td style="background-color: var(--bg-akhir); font-weight:bold;">${row.akhir}</td></tr>`;
+            
+            return htmlRow + `
+                <td style="text-align:center; font-weight:bold; color:#16a34a">${row.masuk}</td>
+                <td style="text-align:center; font-weight:bold; color:#dc2626">${row.keluar}</td>
+                <td style="background-color: var(--bg-akhir); font-weight:bold; text-align:center;">${row.akhir}</td>
+            </tr>`;
         }).join('');
     },
 
 renderDaily: (id, tipe, ms, l) => {
-    const pane = document.getElementById('tab-' + id); 
-    if (!pane || !pane.classList.contains('active')) return;
-    
-    const tglInput = document.getElementById(`f_${id.replace('-','_')}_tgl`);
-    const qInput = document.getElementById(`f_${id.replace('-','_')}_q`);
-    if(!tglInput || !qInput) return;
-
-    const tglFilter = DateHelper.toDB(tglInput.value);
-    const searchVal = qInput.value.toUpperCase();
-
-    // 1. Filter Data
-    let filtered = l.filter(x => {
-        const isMatch = x.tgl === tglFilter && x.tipe === tipe;
-        const isSearch = (x.kode||'').toUpperCase().includes(searchVal) ||
-                         ((ms.find(m=>m.kode===x.kode)||{}).nama||'').toUpperCase().includes(searchVal);
-        const isNotReturn = !(tipe === 'IN' && x.ref && String(x.ref).endsWith('-RET'));
-        return isMatch && isSearch && isNotReturn;
-    });
-
-    // 2. Logika Sorting
-    filtered.sort((a, b) => {
-        let vA = a[UI.sortDayCol] || '';
-        let vB = b[UI.sortDayCol] || '';
-        if (UI.sortDayCol === 'nama') {
-            vA = (ms.find(m => m.kode === a.kode)?.nama || '').toUpperCase();
-            vB = (ms.find(m => m.kode === b.kode)?.nama || '').toUpperCase();
-        } else if (typeof vA === 'string') {
-            vA = vA.toUpperCase();
-            vB = vB.toUpperCase();
-        }
-        if (vA < vB) return UI.sortDayAsc ? -1 : 1;
-        if (vA > vB) return UI.sortDayAsc ? 1 : -1;
-        return 0;
-    });
-
-    const session = DB.get('currentUser') || {};
-    const isAdmin = session.role === 'admin';
-
-    // 3. Render ke HTML
-    document.getElementById(`${id.replace('-','')}TableBody`).innerHTML = filtered.map(x => {
-        const m = ms.find(i => i.kode === x.kode);
-        let displayQty = x.qty;
+        const pane = document.getElementById('tab-' + id); 
+        if (!pane || !pane.classList.contains('active')) return;
         
-        if (tipe === 'OUT') {
-            const totalRet = l.filter(r => r.ref === x.ref + "-RET").reduce((a, b) => a + b.qty, 0);
-            displayQty = x.qty - totalRet;
-        }
+        const tglInput = document.getElementById(`f_${id.replace('-','_')}_tgl`);
+        const qInput = document.getElementById(`f_${id.replace('-','_')}_q`);
+        if(!tglInput || !qInput) return;
 
-        // PERBAIKAN: Gunakan x.id untuk tombol aksi
-        let actionButtons = '';
-        if (isAdmin) {
-            actionButtons = `
-                <td align="center">
-                    <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; margin: 0 1px;" 
-                            onclick="App.editLog('${x.id}')">✏️</button>
-                    <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; margin: 0 1px;" 
-                            onclick="UI.deleteLog('${x.id}')">🗑️</button>
+        const tglFilter = DateHelper.toDB(tglInput.value);
+        const searchVal = qInput.value.toUpperCase();
+
+        // 1. FILTER DATA
+        let filtered = l.filter(x => {
+            const isMatch = x.tgl === tglFilter && x.tipe === tipe;
+            const isSearch = (x.kode||'').toUpperCase().includes(searchVal) ||
+                             ((ms.find(m=>m.kode===x.kode)||{}).nama||'').toUpperCase().includes(searchVal);
+            return isMatch && isSearch;
+        });
+
+        // 2. LOGIKA SORTING
+        filtered.sort((a, b) => {
+            let vA = a[UI.sortDayCol] || '';
+            let vB = b[UI.sortDayCol] || '';
+            if (UI.sortDayCol === 'nama') {
+                vA = (ms.find(m => m.kode === a.kode)?.nama || '').toUpperCase();
+                vB = (ms.find(m => m.kode === b.kode)?.nama || '').toUpperCase();
+            } else if (typeof vA === 'string') {
+                vA = vA.toUpperCase();
+                vB = vB.toUpperCase();
+            }
+            if (vA < vB) return UI.sortDayAsc ? -1 : 1;
+            if (vA > vB) return UI.sortDayAsc ? 1 : -1;
+            return 0;
+        });
+
+        // 3. RENDER KE HTML
+        const session = DB.get('currentUser') || {};
+        const isAdmin = session.role === 'admin';
+
+        document.getElementById(`${id.replace('-','')}TableBody`).innerHTML = filtered.map(x => {
+            const m = ms.find(i => i.kode === x.kode);
+            const isV = (x.v === true || x.v === 'true');
+            
+            // --- LOGIKA KOLOM VERIF ---
+            let verifCol = '';
+            if (isAdmin) {
+                // Admin bisa klik checkbox untuk verifikasi
+                verifCol = `<td align="center">
+                    <input type="checkbox" ${isV ? 'checked' : ''} 
+                           onchange="UI.toggleVerify('${x.id}')" style="cursor:pointer; width:16px; height:16px;">
                 </td>`;
-        } else {
-            actionButtons = '<td></td>';
-        }
+            } else {
+                // User biasa hanya melihat ikon
+                verifCol = `<td align="center">${isV ? '✅' : '<span style="color:#cbd5e1">-</span>'}</td>`;
+            }
 
-        return `
-            <tr class="${x.v ? 'is-verified' : ''}">
-                <td>${x.ref}</td>
-                <td><b>${x.kode}</b></td>
-                <td>${m ? m.nama : ''}</td>
-                <td>${x.batch}</td>
-                <td><b>${displayQty}</b> ${displayQty !== x.qty ? `<br><small style="color:#ef4444;">(Ret: ${x.qty - displayQty})</small>` : ''}</td>
-                <td>${x.ket || '-'}</td>
-                <td align="center">
-                    <input type="checkbox" ${x.v ? 'checked' : ''} 
-                           onchange="UI.toggleVerify('${x.id}')"> </td>
-                ${actionButtons}
-            </tr>`;
-    }).join('');
+            // --- LOGIKA KOLOM AKSI (EDIT & HAPUS) ---
+            let actionCol = '';
+            if (isAdmin) {
+                actionCol = `
+                    <td align="center">
+                        <div style="display:flex; gap:4px; justify-content:center;">
+                            <button class="btn-outline" style="padding: 2px 6px; font-size: 10px; cursor:pointer; color:#f59e0b; border-color:#f59e0b;" 
+                                    onclick="App.editLog('${x.id}')">📝</button>
+                            <button class="btn-outline" style="padding: 2px 6px; font-size: 10px; cursor:pointer; color:#dc2626; border-color:#dc2626;" 
+                                    onclick="App.deleteLog('${x.id}')">🗑️</button>
+                        </div>
+                    </td>`;
+            } else {
+                actionCol = '<td align="center" style="color:#cbd5e1">-</td>';
+            }
 
-    // 4. Update Indikator Panah
-    ['ref', 'kode', 'nama', 'batch'].forEach(c => {
-        const el = document.getElementById(`sort_day_${c}`);
-        if(el) el.innerHTML = UI.sortDayCol === c ? (UI.sortDayAsc ? ' ▲' : ' ▼') : '';
-    });
-},
+            return `
+                <tr class="${isV ? 'is-verified' : ''}" style="${isV ? 'background-color: #f0fdf4;' : ''}">
+                    <td>${x.ref || '-'}</td>
+                    <td><b>${x.kode}</b></td>
+                    <td style="font-size:11px;">${m ? m.nama : '-'}</td>
+                    <td align="center">${x.batch || '-'}</td>
+                    <td align="right"><b>${x.qty}</b></td>
+                    <td style="font-size:10px;">${x.ket || '-'}</td>
+                    ${verifCol}
+                    ${actionCol}
+                </tr>`;
+        }).join('');
+
+        // 4. UPDATE INDIKATOR PANAH SORTING
+        ['ref', 'kode', 'nama', 'batch'].forEach(c => {
+            const el = document.getElementById(`sort_day_${c}`);
+            if(el) el.innerHTML = UI.sortDayCol === c ? (UI.sortDayAsc ? ' ▲' : ' ▼') : '';
+        });
+    },
+
     renderBatch: (ms, act) => {
         const qK = document.getElementById('b_f_kode').value.toUpperCase(), qN = document.getElementById('b_f_nama').value.toUpperCase();
         let ttlS = 0, htmlContent = '';
@@ -790,59 +588,78 @@ renderDaily: (id, tipe, ms, l) => {
     },
 
    renderLog: (ms, l) => {
-        // 1. Ambil kriteria filter dari UI
-        const t1 = DateHelper.toDB(document.getElementById('f_tgl_1').value);
-        const t2 = DateHelper.toDB(document.getElementById('f_tgl_2').value);
-        const qK = document.getElementById('l_f_kode').value.toUpperCase();
-        const tipe = document.getElementById('f_tipe').value;
+    // 1. Ambil kriteria filter dari input UI
+    const t1 = DateHelper.toDB(document.getElementById('f_tgl_1')?.value);
+    const t2 = DateHelper.toDB(document.getElementById('f_tgl_2')?.value);
+    const qK = document.getElementById('l_f_kode')?.value.toUpperCase() || "";
+    const tipe = document.getElementById('f_tipe')?.value || 'ALL';
 
-        // 2. Filter data dari array 'l' (logs)
-        const filtered = l.filter(x => 
-            (x.tgl >= t1 && x.tgl <= t2) && 
-            (qK ? x.kode === qK : true) && 
-            (tipe === 'ALL' || x.tipe === tipe)
-        );
+    // 2. Filter Data berdasarkan Tanggal, Kode, dan Tipe (IN/OUT)
+    const filtered = l.filter(x => {
+        const matchTgl = (x.tgl >= t1 && x.tgl <= t2);
+        const matchKode = qK ? (x.kode || "").toUpperCase().includes(qK) : true;
+        const matchTipe = (tipe === 'ALL' || x.tipe === tipe);
+        return matchTgl && matchKode && matchTipe;
+    });
 
-        // 3. Cek Role Pengguna
-        const session = DB.get('currentUser') || {};
-        const isAdmin = session.role === 'admin';
+    const session = DB.get('currentUser') || {};
+    const isAdmin = session.role === 'admin';
 
-        // 4. Render ke Table Body
-        // .reverse() digunakan agar data terbaru (ID besar) muncul di atas
-        document.getElementById('logTableBody').innerHTML = filtered.reverse().map((x) => {
-            const m = ms.find(i => i.kode === x.kode);
-            const tColor = x.tipe === 'IN' ? 'txt-m' : 'txt-k';
+    
+    const html = filtered.slice().reverse().map(x => {
+        const m = ms.find(i => i.kode === x.kode);
+        const tColor = x.tipe === 'IN' ? 'txt-m' : 'txt-k'; // Hijau/Merah
+        const isV = (x.v === true || x.v === 'true');
 
-            // Logika Kolom Aksi (Khusus Admin)
-            let actionButtons = '';
-            if (isAdmin) {
-                // PENTING: Gunakan '${x.id}' sebagai parameter, bukan index array
-                actionButtons = `
-                    <td align="center">
-                        <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; margin: 0 1px;" 
-                                onclick="App.editLog('${x.id}')">✏️</button>
-                        <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; margin: 0 1px;" 
-                                onclick="UI.deleteLog('${x.id}')">🗑️</button>
-                    </td>`;
-            } else {
-                actionButtons = '<td></td>';
-            }
+        // --- LOGIKA KOLOM VERIFIKASI ---
+        let verifCol = '';
+        if (isAdmin) {
+            verifCol = `<td align="center">
+                <input type="checkbox" ${isV ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')" style="cursor:pointer; width:15px; height:15px;">
+            </td>`;
+        } else {
+            verifCol = `<td align="center" style="font-size:14px;">
+                ${isV ? '✅' : '<span style="color:#94a3b8">-</span>'}
+            </td>`;
+        }
 
-            return `
-                <tr>
-                    <td>${DateHelper.toUI(x.tgl)}</td>
-                    <td>${x.ref}</td>
-                    <td><b>${x.kode}</b></td>
-                    <td>${m ? m.nama : 'Tidak Dikenal'}</td>
-                    <td>${x.batch}</td>
-                    <td class="${tColor}"><b>${x.qty}</b></td>
-                    <td>${x.tipe}</td>
-                    <td>${x.ket || '-'}</td>
-                    ${actionButtons}
-                </tr>`;
-        }).join('');
-    },
-		// Tambahkan di dalam objek UI: { ... }
+        // --- LOGIKA KOLOM AKSI (SISIPKAN EDIT) ---
+        let actionCol = '';
+        if (isAdmin) {
+            actionCol = `
+                <td align="center">
+                    <div style="display:flex; gap:3px; justify-content:center;">
+                        <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; cursor:pointer; color:#f59e0b; border-color:#f59e0b;" 
+                                onclick="App.editLog('${x.id}')">📝</button>
+                        <button class="btn-outline" style="padding: 2px 5px; font-size: 10px; cursor:pointer; color:#dc2626; border-color:#dc2626;" 
+                                onclick="App.deleteLog('${x.id}')">🗑️</button>
+                    </div>
+                </td>`;
+        } else {
+            actionCol = '<td align="center" style="color:#94a3b8">-</td>';
+        }
+
+        return `
+            <tr class="${isV ? 'is-verified' : ''}">
+                <td>${DateHelper.toUI(x.tgl)}</td>
+                <td>${x.ref || '-'}</td>
+                <td><b>${x.kode}</b></td>
+                <td style="font-size:10px;">${m ? m.nama : ''}</td>
+                <td>${x.batch || '-'}</td>
+                <td class="${tColor}" align="right"><b>${x.qty}</b></td>
+                <td align="center"><small>${x.tipe}</small></td>
+                <td style="font-size:10px;">${x.ket || '-'}</td>
+                ${verifCol} 
+                ${actionCol}
+            </tr>`;
+    }).join('');
+
+    const target = document.getElementById('logTableBody');
+    if (target) {
+        target.innerHTML = html || '<tr><td colspan="10" align="center">Data Kosong</td></tr>';
+    }
+},
+
 renderExpiry: () => {
     const act = Engine.calculate(); 
     const tbody = document.getElementById('expiryTableBody');
@@ -904,13 +721,19 @@ renderExpiry: () => {
     },
 
     openTrx: (t) => {
+    // Gunakan 't' secara konsisten sesuai parameter di atas
+    window.currentTrxType = t;
+    
     const todayUI = DateHelper.toUI(new Date().toISOString().split('T')[0]);
     const mContent = document.getElementById('trxBody');
+    if(!mContent) return;
+
     mContent.style.padding = '0';
     mContent.className = 'modal-content sz-medium';
     
+    // Perbaikan: Pastikan variabel 't' yang digunakan di dalam template literal
     let h = `<div id="trxHeader" style="cursor:grab; background:#f1f5f9; padding:12px 15px; border-radius:8px 8px 0 0; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-weight:bold; color:var(--s);">
-                <span>Form ${t === 'IN' ? 'Barang Masuk' : t === 'OUT' ? 'Barang Keluar' : t === 'RET' ? 'Barang Return' : 'Penyesuaian (ADJ)'}</span>
+                <span>Form ${t === 'IN' ? 'Barang Masuk' : 'Barang Keluar'}</span>
                 <span style="font-size:14px; color:#64748b;">✥</span>
              </div>
              <div style="padding: 15px; display:flex; flex-direction:column; gap:8px;">`;
@@ -918,60 +741,38 @@ renderExpiry: () => {
     // 1. BARIS TANGGAL & REF
     h += `<div class="form-row-compact">
             <div class="f-item"><label>Tanggal:</label><input type="text" id="t_tgl" value="${todayUI}" maxlength="10" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
-            <div class="f-item"><label>No. Ref:</label><input id="t_ref" value="${t === 'ADJ' ? 'OPNAME-' + new Date().getTime().toString().slice(-4) : ''}" placeholder="..."></div>
+            <div class="f-item"><label>No. Ref:</label><input id="t_ref" placeholder="..."></div>
           </div>`;
 
-    if(t === 'RET') {
-        h += `<label>Cari No. Ref Asal:</label><div style="display:flex;gap:2px;margin-bottom:5px;"><input id="t_ref_s" placeholder="Masukkan No. Ref..."><button class="btn-primary" id="btnCariRef" onclick="UI.findRef()">Cari</button></div>`;
-        h += `<label>Pilih Item:</label><select id="t_ret_item" onchange="UI.fillRet()"><option value="">-- Cari Ref Dulu --</option></select>`;
-        h += `<div class="form-row-compact"><div class="f-item" style="flex:2"><label>Kode:</label><input id="t_k" readonly class="read-only"></div><div class="f-item" style="flex:3"><label>Nama:</label><input id="t_n" readonly class="read-only"></div></div>`;
-        h += `<div class="form-row-compact"><div class="f-item"><label>Qty Lama:</label><input id="t_q_old" readonly class="read-only"></div><div class="f-item"><label>Qty Baru (Return):</label><input id="t_new_q" type="number" onkeydown="if(event.key==='Enter') App.prepareSave('RET')"></div></div>`;
-        h += `<label>Keterangan:</label><input id="t_ket" placeholder="Alasan Return">`;
-    } else {
-        h += `<div style="position:relative;">
-                <div class="form-row-compact">
-                    <div class="f-item" style="flex:2"><label>Kode:</label><input id="t_k" placeholder="Kode" onkeyup="UI.showAutoList('k', '${t}')" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div>
-                    <div class="f-item" style="flex:3"><label>Nama Barang:</label><input id="t_n" placeholder="Cari Nama..." onkeyup="UI.showAutoList('n', '${t}')" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div>
-                </div>
+    // 2. BARIS KODE & NAMA
+    h += `<div style="position:relative;">
+            <div class="form-row-compact">
+                <div class="f-item" style="flex:2"><label>Kode:</label><input id="t_k" placeholder="Kode" onkeyup="UI.showAutoList('k', '${t}')" onkeydown="UI.handleAutoKey(event, 'k', '${t}')" autocomplete="off"><div id="t_k_list" class="autocomplete-items"></div></div>
+                <div class="f-item" style="flex:3"><label>Nama Barang:</label><input id="t_n" placeholder="Cari Nama..." onkeyup="UI.showAutoList('n', '${t}')" onkeydown="UI.handleAutoKey(event, 'n', '${t}')" autocomplete="off"><div id="t_n_list" class="autocomplete-items"></div></div>
+            </div>
+          </div>`;
+
+    if(t === 'IN') {
+        h += `<div class="form-row-compact"><div class="f-item"><label>No. Batch:</label><input id="t_b" placeholder="Nomor Batch"></div></div>`;
+        h += `<div class="form-row-compact">
+                <div class="f-item"><label>Qty Masuk:</label><input id="t_q" type="number" placeholder="0" onkeydown="if(event.key==='Enter') App.prepareSave('IN')"></div>
+                <div class="f-item"><label>Expired Date:</label><input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)"></div>
               </div>`;
-
-        if(t === 'IN') {
-            // Baris 1: Batch (Sendirian)
-            h += `<div class="form-row-compact">
-                    <div class="f-item"><label>No. Batch:</label><input id="t_b" onblur="UI.checkBatchIn()" placeholder="Nomor Batch"></div>
-                  </div>`;
-            
-            // Baris 2: Qty & Expired (Berdampingan + Enter)
-            h += `<div class="form-row-compact">
-                    <div class="f-item"><label>Qty Masuk:</label><input id="t_q" type="number" placeholder="0" onkeydown="if(event.key==='Enter') App.prepareSave('IN')"></div>
-                    <div class="f-item"><label>Expired Date:</label><input id="t_exp" placeholder="DD-MM-YYYY" oninput="UI.formatDateInput(this)" onblur="UI.expandDate(this)" onkeydown="if(event.key==='Enter') App.prepareSave('IN')"></div>
-                  </div>`;
-            
-            // Keterangan Sembunyi
-            h += `<div style="display:none;"><input id="t_ket" value="-"></div>`;
-        } else {
-            h += `<div class="form-row-compact">
-                    <div class="f-item" style="flex:1"><label>Stok Total:</label><input id="t_stk_tot" readonly class="read-only" style="background:#f0f9ff; font-weight:bold; color:#0369a1;"></div>
-                    <div class="f-item" style="flex:3"><label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')" style="width:100%; padding:5px; border-radius:4px;"><option value="">-- Pilih --</option></select></div>
-                  </div>`;
-            h += `<div class="form-row-compact">
-                    <div class="f-item"><label>Stok Batch:</label><input id="t_stk_b" readonly class="read-only" style="background:#fef2f2; font-weight:bold; color:#b91c1c;"></div>
-                    <div class="f-item"><label>Qty ${t === 'ADJ' ? 'Adj' : 'Keluar'}:</label><input id="t_q" type="number" placeholder="0" onkeydown="if(event.key==='Enter') App.prepareSave('${t}')"></div>
-                  </div>`;
-
-            if(t === 'ADJ') {
-                h += `<div class="form-row-compact">
-                        <div class="f-item"><label>Jenis ADJ:</label><select id="t_adj_type"><option value="IN">(+) Tambah</option><option value="OUT">(-) Kurang</option></select></div>
-                        <div class="f-item"><label>Ket:</label><input id="t_ket" placeholder="Alasan Penyesuaian"></div>
-                      </div>`;
-            } else {
-                h += `<label>Keterangan:</label><input id="t_ket" placeholder="Tujuan / Catatan">`;
-            }
-        }
+        h += `<label>Keterangan:</label><input id="t_ket" placeholder="-">`;
+    } else {
+        h += `<div class="form-row-compact">
+                <div class="f-item" style="flex:1"><label>Stok Total:</label><input id="t_stk_tot" readonly class="read-only" style="background:#f0f9ff; font-weight:bold; color:#0369a1;"></div>
+                <div class="f-item" style="flex:3"><label>Pilih Batch:</label><select id="t_b_sel" onchange="UI.syncTrx('b', '${t}')" style="width:100%; padding:5px; border-radius:4px;"><option value="">-- Pilih --</option></select></div>
+              </div>`;
+        h += `<div class="form-row-compact">
+                <div class="f-item"><label>Stok Batch:</label><input id="t_stk_b" readonly class="read-only" style="background:#fef2f2; font-weight:bold; color:#b91c1c;"></div>
+                <div class="f-item"><label>Qty Keluar:</label><input id="t_q" type="number" placeholder="0" onkeydown="if(event.key==='Enter') App.prepareSave('OUT')"></div>
+              </div>`;
+        h += `<label>Keterangan:</label><input id="t_ket" placeholder="Tujuan / Catatan">`;
     }
 
     h += `<div style="display:flex; gap:5px; margin-top:10px;">
-            <button id="btnPrepare" class="btn-primary" style="flex:1;" onclick="if(window.currentlyEditingLogIndex !== undefined) { UI.saveEditedLog(); } else { App.prepareSave('${t}'); }">💾 Lanjut</button>
+            <button id="btnPrepare" class="btn-primary" style="flex:1;" onclick="App.prepareSave('${t}')">💾 Lanjut</button>
             <button class="btn-outline" style="flex:1;" onclick="UI.closeModal('modalTrx')">Batal</button>
           </div></div>`;
 
@@ -979,33 +780,18 @@ renderExpiry: () => {
     UI.showModal('modalTrx'); 
     Draggable.init('trxBody', 'trxHeader');
 
-    // Fokus otomatis ke Kode Barang
     setTimeout(() => {
         const k = document.getElementById('t_k');
         if(k) k.focus();
     }, 150);
 },
 
-
-    findRef: () => {
-        const r = document.getElementById('t_ref_s').value.trim(); if(!r) return;
-        const l = DB.get('l').filter(x => x.ref === r && x.tipe === 'OUT'), s = document.getElementById('t_ret_item');
-        if(l.length === 0) { alert("Ref tidak ditemukan!"); s.innerHTML = '<option value="">--Kosong--</option>'; } 
-        else { s.innerHTML = '<option value="">--Pilih Barang--</option>' + l.map(x => `<option value='${JSON.stringify(x)}'>${x.kode} (Qty: ${x.qty})</option>`).join(''); }
-    },
-
-    fillRet: () => {
-        const val = document.getElementById('t_ret_item').value; if(!val) return;
-        const d = JSON.parse(val), act = Engine.calculate().find(b => b.kode === d.kode && b.batch === d.batch);
-        document.getElementById('t_k').value = d.kode; document.getElementById('t_n').value = DB.get('m').find(x=>x.kode===d.kode)?.nama || "";
-        document.getElementById('t_q_old').value = d.qty; document.getElementById('t_stk_b').value = act ? act.stok : 0;
-    },
-	showToast: (msg) => {
+    showToast: (msg) => {
         const t = document.createElement('div');
         t.className = 'toast-container';
         t.innerText = msg;
         document.body.appendChild(t);
-        setTimeout(() => t.remove(), 1000); 
+        setTimeout(() => t.remove(), 2000); 
     }
 };
 
@@ -1042,13 +828,6 @@ const App = {
     exportDB: () => {
         const b = new Blob([JSON.stringify({ m: DB.get('m'), l: DB.get('l') })], { type: 'application/json' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Backup_${new Date().getTime()}.json`; a.click();
-    },
-
-    importDB: (input) => {
-        const r = new FileReader();
-        r.onload = (e) => {
-            const d = JSON.parse(e.target.result); DB.set('m', d.m); DB.set('l', d.l); UI.refresh(); alert("Data Dimuat!");
-        }; r.readAsText(input.files[0]);
     },
 
     exportToExcel: () => {
@@ -1137,149 +916,155 @@ const App = {
     },
 
 prepareSave: (t) => {
-        const ms = DB.get('m') || [];
+        // Ambil data dasar dari form
         const tglRaw = document.getElementById('t_tgl')?.value || "";
-        const tglDB = DateHelper.toDB(tglRaw);
-        const ref = document.getElementById('t_ref')?.value.trim() || "";
+        const tglDB = DateHelper.toDB ? DateHelper.toDB(tglRaw) : tglRaw;
+        const ref = document.getElementById('t_ref')?.value.trim() || "-";
         const ket = document.getElementById('t_ket')?.value.trim() || "-";
+        const kode = document.getElementById('t_k')?.value.toUpperCase() || "";
         
+        // Ambil Qty (mendukung input baru atau field edit)
         const qInput = document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value;
         let q = parseInt(qInput);
 
-        if (!tglDB || tglDB.length !== 10) return UI.showToast("⚠️ Format Tanggal Salah!");
+        // Validasi Dasar
+        if (!tglDB) return UI.showToast("⚠️ Tanggal wajib diisi!");
+        if (!kode) return UI.showToast("⚠️ Kode Barang wajib diisi!");
         if (isNaN(q) || q <= 0) return UI.showToast("⚠️ Qty tidak valid!");
 
-        let previewHTML = "";
-        let trType = t; 
+        // Logika Batch: Jika IN ketik manual, jika OUT ambil dari select
+        const batch = (t === 'IN') ? document.getElementById('t_b')?.value : document.getElementById('t_b_sel')?.value;
+        if (!batch) return UI.showToast("⚠️ Nomor Batch wajib diisi!");
 
-        if (t === 'RET') {
-            const rData = document.getElementById('t_ret_item')?.value;
-            if (!rData) return UI.showToast("⚠️ Pilih data retur!");
-            
-            const refLog = JSON.parse(rData);
-            const oldQ = parseInt(document.getElementById('t_q_old')?.value || 0);
-            
-            if (q > oldQ) return UI.showToast(`⚠️ Koreksi maksimal ${oldQ}`);
-            if (q === oldQ) return UI.showToast("⚠️ Qty baru sama, tidak ada perubahan.");
+        const expRaw = document.getElementById('t_exp')?.value.trim() || "";
+        
+        const existingId = window.editingId || null; 
 
-            const selisih = oldQ - q; 
-            
-            window.pendingData = { 
-                tgl: tglDB, 
-                ref: refLog.ref + "-RET", 
-                kode: refLog.kode, 
-                batch: refLog.batch, 
-                exp: refLog.exp, 
-                qty: selisih, 
-                tipe: 'RET', 
-                ket: "RETURN/KOREKSI REF: " + refLog.ref + " | " + ket 
-            };
+        // Siapkan Payload untuk window.pendingData
+        window.pendingData = { 
+            tgl: tglDB, 
+            ref: ref, 
+            kode: kode, 
+            batch: batch, 
+            exp: expRaw ? DateHelper.toDB(expRaw) : null, 
+            qty: q, 
+            tipe: t, // Langsung gunakan 'IN' atau 'OUT'
+            ket: ket 
+        };
 
-            previewHTML = `
-                <div style="background:rgba(22, 163, 74, 0.1); padding:8px; border-radius:5px; margin-bottom:10px;">
-                    <b style="color:#16a34a;">TIPE: RETURN / KOREKSI</b>
-                </div>
-                <table style="width:100%; font-size:13px;">
-                    <tr><td width="35%"><b>Ref Awal</b></td><td>: ${refLog.ref}</td></tr>
-                    <tr><td><b>Kode</b></td><td>: ${refLog.kode}</td></tr>
-                    <tr><td><b>Batch</b></td><td>: ${refLog.batch}</td></tr>
-                    <tr><td><b>Qty Masuk</b></td><td>: <b style="color:#16a34a">${selisih}</b></td></tr>
-                </table>`;
-
-        } else {
-            const kode = document.getElementById('t_k')?.value.toUpperCase() || "";
-            if (!ref || !kode) return UI.showToast("⚠️ Ref dan Kode wajib diisi!");
-
-            const masterItem = ms.find(x => x.kode === kode);
-            const n = masterItem ? masterItem.nama : "Tidak Dikenal";
-            
-            // 1. Ambil Batch (t_b untuk IN, t_b_sel untuk OUT/ADJ)
-        const batchInput = document.getElementById('t_b');
-        const batchSelect = document.getElementById('t_b_sel');
-        const batch = (t === 'IN') ? batchInput?.value : batchSelect?.value;
-
-        // 2. Validasi Batch (Kecuali RET karena batch sudah ada di data awal)
-        if (t !== 'RET' && !batch) {
-            return UI.showToast("⚠️ Nomor Batch wajib diisi!");
+        // Jika ini proses EDIT, masukkan ID ke pendingData agar executeSave melakukan UPSERT (Update)
+        if (existingId) {
+            window.pendingData.id = existingId;
         }
 
-        // 3. Tentukan Tipe untuk Database
-        trType = (t === 'IN') ? 'IN' : 'OUT';
-        let adjLabel = t;
+        // Tampilan Preview Sederhana
+        let labelHeader = existingId ? "KONFIRMASI EDIT DATA" : "KONFIRMASI INPUT BARU";
+        let colorHeader = existingId ? "#f59e0b" : "#6366f1"; // Kuning untuk edit, Biru untuk baru
 
-        if (t === 'ADJ') {
-            trType = 'ADJ'; // Paksa tipe ADJ agar Pivot tidak kotor
-            const adjMode = document.getElementById('t_adj_type')?.value; // IN atau OUT
-            adjLabel = adjMode === 'IN' ? 'OPNAME (+)' : 'OPNAME (-)';
-            // Jika Opname (-) maka Qty jadikan negatif
-            if (adjMode === 'OUT') q = -Math.abs(q); 
-        }
-            // PERBAIKAN TIPE ADJ: Agar masuk ke logika 'Floating' di Pivot
-            trType = (t === 'IN') ? 'IN' : 'OUT';
-            let adjLabelType = ""; 
-            
-            if (t === 'ADJ') {
-                trType = 'ADJ'; // Set tipe data DB jadi ADJ
-                adjLabelType = document.getElementById('t_adj_type')?.value; // IN atau OUT untuk warna
-            }
+        let previewHTML = `
+            <div style="background: ${colorHeader}22; padding:10px; border-radius:5px; margin-bottom:10px; border: 1px solid ${colorHeader}">
+                <b style="color:${colorHeader};">${labelHeader}</b>
+            </div>
+            <table style="width:100%; font-size:14px; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #eee;"><td width="40%" style="padding:5px 0;"><b>Tipe</b></td><td>: ${t === 'IN' ? '📥 MASUK' : '📤 KELUAR'}</td></tr>
+                <tr style="border-bottom: 1px solid #eee;"><td style="padding:5px 0;"><b>Barang</b></td><td>: ${kode}</td></tr>
+                <tr style="border-bottom: 1px solid #eee;"><td style="padding:5px 0;"><b>Batch</b></td><td>: ${batch}</td></tr>
+                <tr><td style="padding:5px 0;"><b>Qty</b></td><td>: <b style="font-size:1.2em; color:#16a34a">${q}</b></td></tr>
+            </table>`;
 
-            const expRaw = document.getElementById('t_exp')?.value.trim() || "";
-            let expDB = DateHelper.toDB(expRaw);
-
-            window.pendingData = { 
-                tgl: tglDB, 
-                ref: ref, 
-                kode: kode, 
-                batch: batch, 
-                exp: expDB || null, 
-                qty: q, 
-                tipe: trType, 
-                ket: ket 
-            };
-
-            // Warna dan Label Preview
-            let labelAct = t;
-            let colorType = trType === 'IN' ? '#16a34a' : '#dc2626';
-            
-            if (t === 'ADJ') {
-                labelAct = adjLabelType === 'IN' ? 'OPNAME (+)' : 'OPNAME (-)';
-                colorType = adjLabelType === 'IN' ? '#16a34a' : '#dc2626';
-                // Jika Opname Kurang, qty di pendingData dibuat negatif
-                if (adjLabelType === 'OUT') window.pendingData.qty = -Math.abs(q);
-            }
-
-            previewHTML = `
-                <div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:5px; margin-bottom:10px;">
-                    <b style="color:${colorType};">TIPE: ${labelAct}</b>
-                </div>
-                <table style="width:100%; font-size:13px;">
-                    <tr><td width="35%"><b>Tanggal</b></td><td>: ${tglRaw}</td></tr>
-                    <tr><td><b>No. Ref</b></td><td>: ${ref}</td></tr>
-                    <tr><td><b>Barang</b></td><td>: ${kode} - ${n}</td></tr>
-                    <tr><td><b>Batch</b></td><td>: ${batch}</td></tr>
-                    <tr><td><b>Qty</b></td><td>: <b style="color:${colorType}">${q}</b></td></tr>
-                </table>`;
-        }
-
-        const contentEl = document.getElementById('previewContent');
-        if (contentEl) contentEl.innerHTML = previewHTML;
-
+        document.getElementById('previewContent').innerHTML = previewHTML;
         UI.showModal('modalPreview');
-
+        
+        // Delay Tombol Simpan (Cegah Double Click)
         const btnS = document.getElementById('btnConfirmSave');
         if (btnS) {
             btnS.disabled = true; 
-            btnS.style.opacity = "0.5";
             btnS.innerText = "Tunggu...";
-            
-            window.setTimeout(() => {
+            window.setTimeout(() => { 
                 btnS.disabled = false; 
-                btnS.style.opacity = "1";
-                btnS.innerText = "💾 Simpan";
+                btnS.innerText = "💾 Simpan"; 
                 btnS.focus(); 
-            }, 400); 
+            }, 500); 
         }
     },
+    editLog: (id) => {
+    const logs = DB.get('l') || [];
+    const data = logs.find(x => String(x.id) === String(id));
+
+    if (!data) return UI.showToast("⚠️ Data tidak ditemukan!");
+
+    window.editingId = id;
+    UI.openTrx(data.tipe);
+
+    setTimeout(() => {
+        // Isi field dasar
+        if(document.getElementById('t_tgl')) document.getElementById('t_tgl').value = DateHelper.toUI(data.tgl);
+        if(document.getElementById('t_ref')) document.getElementById('t_ref').value = data.ref || '';
+        
+        // Isi Kode Barang
+        const elK = document.getElementById('t_k');
+        if(elK) {
+            elK.value = data.kode;
+            // PAKSA SYNC: Agar nama barang muncul otomatis berdasarkan kode
+            UI.syncTrx('k', data.tipe); 
+        }
+
+        if(document.getElementById('t_q')) document.getElementById('t_q').value = data.qty;
+        if(document.getElementById('t_ket')) document.getElementById('t_ket').value = data.ket || '';
+        if(document.getElementById('t_exp')) document.getElementById('t_exp').value = data.exp || '';
+
+        // Logika Batch
+        if (data.tipe === 'IN') {
+            if(document.getElementById('t_b')) document.getElementById('t_b').value = data.batch;
+        } else {
+            // Untuk OUT, pastikan list batch muncul dulu baru set value-nya
+            setTimeout(() => {
+                const bSel = document.getElementById('t_b_sel');
+                if(bSel) bSel.value = data.batch;
+            }, 150);
+        }
+        UI.showToast("📝 Mode Edit Aktif");
+    }, 250);
+},
+
+        deleteLog: async (id) => {
+    // 1. Validasi ID
+    if (id === undefined || id === null || id === "" || id === "undefined") {
+        console.error("ID Transaksi tidak valid:", id);
+        UI.showToast("❌ Error: ID Transaksi tidak terbaca.");
+        return;
+    }
+
+    // 2. Konfirmasi User
+    if (!confirm(`Hapus transaksi ID: ${id}?`)) return;
+    
+    try {
+        // 3. Eksekusi Delete ke Supabase (Gunakan string agar aman untuk BigInt)
+        const { data, error } = await sb
+            .from('transaksi_log')
+            .delete()
+            .eq('id', id.toString())
+            .select();
+
+        if (error) throw error;
+
+        // 4. Cek hasil balik dari server
+        if (!data || data.length === 0) {
+            UI.showToast("⚠️ Gagal: Data sudah dihapus sebelumnya atau ID salah.");
+        } else {
+            UI.showToast("✅ Berhasil dihapus!");
+        }
+
+        // 5. Update data lokal & Tampilan
+        await DB.load();
+        UI.refresh();
+
+    } catch (err) {
+        console.error("Gagal hapus:", err);
+        UI.showToast("❌ Gagal: " + err.message);
+    }
+},
+
     executeSave: async () => {
         if (!window.pendingData) return;
         const btn = document.getElementById('btnConfirmSave');
@@ -1295,29 +1080,25 @@ prepareSave: (t) => {
                 tipe: window.pendingData.tipe,
                 ket: window.pendingData.ket || "-",
                 exp: window.pendingData.exp || null,
-                v: false
+                v: window.pendingData.v || false
             };
 
-            const { error } = await sb.from('transaksi_log').insert([payload]);
+            // JIKA EDIT: Masukkan ID ke payload agar terjadi UPDATE (Upsert)
+            if (window.pendingData.id) {
+                payload.id = window.pendingData.id;
+            }
+
+            // Eksekusi ke Supabase
+            const { error } = await sb.from('transaksi_log').upsert([payload]);
             if (error) throw error;
 
             UI.closeModal('modalPreview'); 
+            UI.closeModal('modalTrx');
             await DB.load(); 
             UI.refresh();
-            UI.showToast("✅ Data Tersimpan!");
+            UI.showToast("✅ Data Berhasil Disimpan!");
 
-            // IDs yang dibersihkan (t_tgl dan t_ref TIDAK ADA di sini agar tetap ada)
-            const idsToClear = ['t_k', 't_n', 't_q', 't_new_q', 't_stk_b', 't_stk_tot', 't_ket', 't_exp', 't_b'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            // Fokus kembali ke Kode
-            setTimeout(() => {
-                const inputKode = document.getElementById('t_k');
-                if (inputKode) inputKode.focus();
-            }, 100);
+            window.editingId = null; // Reset status edit
 
         } catch (err) { 
             console.error("Detail Error:", err);
@@ -1328,6 +1109,7 @@ prepareSave: (t) => {
         }
     }
 };
+
 
 window.onload = async () => {
     const t = new Date();
@@ -1343,8 +1125,8 @@ window.onload = async () => {
     Object.entries(dateFields).forEach(([id, val]) => {
         const el = document.getElementById(id); if (el) el.value = DateHelper.toUI(val);
     });
-	
-	// --- TAMBAHKAN KODE INI DI SINI ---
+    
+    // --- TAMBAHKAN KODE INI DI SINI ---
     const selY = document.getElementById('f_mutasi_y');
     if (selY) {
         const currentYear = new Date().getFullYear();
@@ -1367,7 +1149,7 @@ if (selM && selY) {
     selY.value = currentYear;
 }
 // --- Akhir kode ---
-	
+    
     // 2. Cek Sesi Supabase
     try {
         const { data: { session }, error } = await sb.auth.getSession();
@@ -1421,7 +1203,7 @@ if (selM && selY) {
         console.error("Auth Error:", err);
     }
 
-    // 3. Final Render
+    
     const main = document.getElementById('main-content');
     if (main) main.classList.add('content-animate-in', 'visible');
     UI.refresh(); // Ini yang akan menggambar tabel stok ringkas untuk guest
@@ -1452,20 +1234,18 @@ document.addEventListener('keydown', (e) => {
             if (btnS && !btnS.disabled) {
                 e.preventDefault();
                 e.stopPropagation(); 
-                App.executeSave(); // Memanggil fungsi simpan
+                App.executeSave(); 
             }
             return;
         }
 
-        // CASE 2: Jika masih di Form Input, tekan Enter untuk Buka Preview
         if (modalT && (modalT.style.display === 'flex' || modalT.style.display === 'block')) {
-            // Abaikan jika sedang mengetik di Keterangan
+   
             if (e.target.tagName === 'TEXTAREA') return;
 
             e.preventDefault();
-            // Ambil tipe transaksi dari window.currentTrxType yang sudah diset di UI.openTrx
             const currentType = window.currentTrxType || 'IN';
-            App.prepareSave(currentType); // <--- Sekarang memanggil App.prepareSave
+            App.prepareSave(currentType); 
         }
     }
 
