@@ -1136,26 +1136,23 @@ const App = {
         finally { btn.innerText = originalText; btn.disabled = false; }
     },
 
-    prepareSave: (t) => {
+prepareSave: (t) => {
         const ms = DB.get('m') || [];
         const tglRaw = document.getElementById('t_tgl')?.value || "";
         const tglDB = DateHelper.toDB(tglRaw);
         const ref = document.getElementById('t_ref')?.value.trim() || "";
         const ket = document.getElementById('t_ket')?.value.trim() || "-";
         
-        // Ambil Qty (Mendukung input manual atau hasil hitung otomatis)
         const qInput = document.getElementById('t_q')?.value || document.getElementById('t_new_q')?.value;
         let q = parseInt(qInput);
 
-        // Validasi Dasar
         if (!tglDB || tglDB.length !== 10) return UI.showToast("⚠️ Format Tanggal Salah!");
         if (isNaN(q) || q <= 0) return UI.showToast("⚠️ Qty tidak valid!");
 
         let previewHTML = "";
-        let trType = t; // Default tipe (IN/OUT/RET)
+        let trType = t; 
 
         if (t === 'RET') {
-            // LOGIKA RETUR
             const rData = document.getElementById('t_ret_item')?.value;
             if (!rData) return UI.showToast("⚠️ Pilih data retur!");
             
@@ -1165,7 +1162,7 @@ const App = {
             if (q > oldQ) return UI.showToast(`⚠️ Koreksi maksimal ${oldQ}`);
             if (q === oldQ) return UI.showToast("⚠️ Qty baru sama, tidak ada perubahan.");
 
-            const selisih = oldQ - q; // Jumlah yang dikembalikan ke stok
+            const selisih = oldQ - q; 
             
             window.pendingData = { 
                 tgl: tglDB, 
@@ -1174,7 +1171,7 @@ const App = {
                 batch: refLog.batch, 
                 exp: refLog.exp, 
                 qty: selisih, 
-                tipe: 'RET', // Simpan sebagai RET di DB
+                tipe: 'RET', 
                 ket: "RETURN/KOREKSI REF: " + refLog.ref + " | " + ket 
             };
 
@@ -1190,22 +1187,42 @@ const App = {
                 </table>`;
 
         } else {
-            // LOGIKA IN, OUT, ADJ
             const kode = document.getElementById('t_k')?.value.toUpperCase() || "";
             if (!ref || !kode) return UI.showToast("⚠️ Ref dan Kode wajib diisi!");
 
             const masterItem = ms.find(x => x.kode === kode);
             const n = masterItem ? masterItem.nama : "Tidak Dikenal";
             
-            // Tentukan Batch
-            const batch = (t === 'IN') ? document.getElementById('t_b')?.value : document.getElementById('t_b_sel')?.value;
-            if (!batch) return UI.showToast("⚠️ Nomor Batch wajib diisi!");
+            // 1. Ambil Batch (t_b untuk IN, t_b_sel untuk OUT/ADJ)
+        const batchInput = document.getElementById('t_b');
+        const batchSelect = document.getElementById('t_b_sel');
+        const batch = (t === 'IN') ? batchInput?.value : batchSelect?.value;
 
-            // Tentukan Tipe DB (Khusus ADJ ambil dari dropdown)
+        // 2. Validasi Batch (Kecuali RET karena batch sudah ada di data awal)
+        if (t !== 'RET' && !batch) {
+            return UI.showToast("⚠️ Nomor Batch wajib diisi!");
+        }
+
+        // 3. Tentukan Tipe untuk Database
+        trType = (t === 'IN') ? 'IN' : 'OUT';
+        let adjLabel = t;
+
+        if (t === 'ADJ') {
+            trType = 'ADJ'; // Paksa tipe ADJ agar Pivot tidak kotor
+            const adjMode = document.getElementById('t_adj_type')?.value; // IN atau OUT
+            adjLabel = adjMode === 'IN' ? 'OPNAME (+)' : 'OPNAME (-)';
+            // Jika Opname (-) maka Qty jadikan negatif
+            if (adjMode === 'OUT') q = -Math.abs(q); 
+        }
+            // PERBAIKAN TIPE ADJ: Agar masuk ke logika 'Floating' di Pivot
             trType = (t === 'IN') ? 'IN' : 'OUT';
-            if (t === 'ADJ') trType = document.getElementById('t_adj_type')?.value;
+            let adjLabelType = ""; 
+            
+            if (t === 'ADJ') {
+                trType = 'ADJ'; // Set tipe data DB jadi ADJ
+                adjLabelType = document.getElementById('t_adj_type')?.value; // IN atau OUT untuk warna
+            }
 
-            // Ambil Expired (Hanya untuk IN)
             const expRaw = document.getElementById('t_exp')?.value.trim() || "";
             let expDB = DateHelper.toDB(expRaw);
 
@@ -1220,8 +1237,16 @@ const App = {
                 ket: ket 
             };
 
-            let labelAct = t === 'ADJ' ? (trType === 'IN' ? 'OPNAME (+)' : 'OPNAME (-)') : t;
+            // Warna dan Label Preview
+            let labelAct = t;
             let colorType = trType === 'IN' ? '#16a34a' : '#dc2626';
+            
+            if (t === 'ADJ') {
+                labelAct = adjLabelType === 'IN' ? 'OPNAME (+)' : 'OPNAME (-)';
+                colorType = adjLabelType === 'IN' ? '#16a34a' : '#dc2626';
+                // Jika Opname Kurang, qty di pendingData dibuat negatif
+                if (adjLabelType === 'OUT') window.pendingData.qty = -Math.abs(q);
+            }
 
             previewHTML = `
                 <div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:5px; margin-bottom:10px;">
@@ -1236,15 +1261,11 @@ const App = {
                 </table>`;
         }
 
-        document.getElementById('previewContent').innerHTML = previewHTML;
-        UI.showModal('modalPreview');
-		
-       const contentEl = document.getElementById('previewContent');
+        const contentEl = document.getElementById('previewContent');
         if (contentEl) contentEl.innerHTML = previewHTML;
 
         UI.showModal('modalPreview');
 
-        // GANTI/TAMBAHKAN BAGIAN INI:
         const btnS = document.getElementById('btnConfirmSave');
         if (btnS) {
             btnS.disabled = true; 
@@ -1255,8 +1276,6 @@ const App = {
                 btnS.disabled = false; 
                 btnS.style.opacity = "1";
                 btnS.innerText = "💾 Simpan";
-                
-                // PAKSA FOKUS agar Enter selanjutnya tidak meleset
                 btnS.focus(); 
             }, 400); 
         }
