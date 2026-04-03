@@ -1,36 +1,98 @@
-:root { --p: #43df50; --bg: #aaa7a7; --s: #646161; --danger: #dc2626; --success: #16a34a; }
-* { box-sizing: border-box; cursor: default; margin: 0; outline: none; }
-body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; min-height: 100vh; font-size: 11px; }
+/* --- CUSTOM SCROLLBAR (CHROME, SAFARI, EDGE) --- */
+::-webkit-scrollbar {
+    width: 8px;  /* Lebar scrollbar vertikal */
+    height: 8px; /* Tinggi scrollbar horizontal */
+}
 
-/* DYNAMIC SIDEBAR */
+::-webkit-scrollbar-track {
+    background: transparent; /* Latar belakang jalur scroll */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #b0c1d6; /* Warna batang scroll */
+    border-radius: 10px;  /* Membuat ujungnya bulat */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--p); /* Berubah warna saat disentuh mouse (pakai warna primary Anda) */
+}
+
+/* --- KHUSUS FIREFOX --- */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #9a9da1 transparent;
+}
+.overflow-x {
+    direction: rtl; /* Right-to-Left: memindahkan scrollbar ke kiri */
+    overflow-x: auto;
+}
+.overflow-x table {
+    direction: ltr; /* Kembalikan arah teks tabel ke normal (kiri ke kanan) */
+}
+:root {
+    /* Variabel Original Anda */
+    --p: #43df50;
+    --bg: #aaa7a7;
+    --s: #3a3a3d;
+    --danger: #dc2626;
+    --success: #16a34a; 
+
+    /* Warna Form & Layout (Bisa Anda edit di F12) */
+    --app-bg: #a6a9ab;
+    --card-bg: #cec9c9;
+    --card-border: #e2e8f0;
+    --input-bg: #e8e2e2;
+    --input-border: #cbd5e1;
+    --input-text: #1e293b;
+
+    /* Warna Tombol */
+    --btn-filter-bg: #2e44f2;
+    --btn-reset-border: #64748b;
+
+    /* Warna Pivot Default */
+    --bg-in: #9cf59c;
+    --bg-out: #eea8a8;
+    --bg-awal: #f7f17f;
+    --bg-akhir: #5aa0c9;
+    
+    /*top nav */
+    --top-nav-bg: #3a3a3af8; /* Warna default (Terang/Gelap sesuai aslinya) */
+    --top-nav-text: #fcfcfc;
+}
+
+/* =========================================
+   2. RESET & BASE LAYOUT
+   ========================================= */
+* { box-sizing: border-box; cursor: default; margin: 0; outline: none; }
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background-color: var(--app-bg) !important; 
+    color: var(--input-text);
+    display: flex; 
+    min-height: 100vh; 
+    font-size: 11px; 
+}
+
+#main-content { 
+    flex: 1; 
+    padding: 15px; 
+    min-width: 0; 
+    display: flex; 
+    flex-direction: column; 
+    transition: all 0.3s ease; 
+    opacity: 0; /* Untuk animasi masuk */
+}
+#main-content.visible { opacity: 1; }
+
+/* =========================================
+   3. SIDEBAR & NAVIGASI TOP
+   ========================================= */
 .sidebar { width: 220px; background: var(--s); color: rgb(255, 255, 255); display: none; flex-direction: column ; position: sticky; top: 0; height: 100vh; z-index: 100; overflow-x: hidden; overflow-y: auto; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 body.admin-mode .sidebar { display: flex; }
-.sidebar-header { 
-    padding: 12px 15px; border-bottom: 1px solid #676769; 
-    display: flex; 
-    align-items: center; 
-    white-space: nowrap; 
-    position: relative; /* Penting untuk posisi logo */
-    min-height: 45px;
-}
-.logo-txt { 
-    position: absolute; 
-    left: 0; 
-    right: 0; 
-    text-align: center; 
-    font-weight: bold; 
-    font-size: 13px; 
-    pointer-events: none; /* Agar tidak menghalangi klik tombol */
-    letter-spacing: 0.5px;
-}
-.toggle-btn { 
-    background: none; 
-    border: none; 
-    color: white; 
-    font-size: 18px; 
-    cursor: pointer; 
-    z-index: 2; /* Agar di atas logo */
-}
+.sidebar-header { padding: 12px 15px; border-bottom: 1px solid #676769; display: flex; align-items: center; white-space: nowrap; position: relative; min-height: 45px; }
+.logo-txt { position: absolute; left: 0; right: 0; text-align: center; font-weight: bold; font-size: 13px; pointer-events: none; letter-spacing: 0.5px; }
+.toggle-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; z-index: 2; }
 .nav-item { padding: 12px 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 13px; transition: all 0.2s ease; white-space: nowrap; border-left: 3px solid transparent; }
 .nav-item:hover { background: #b7b9bb; border-left-color: var(--p); }
 .nav-item .icon { font-size: 14px; transition: font-size 0.3s ease, margin 0.3s ease; display: flex; justify-content: center; width: 24px; }
@@ -38,23 +100,48 @@ body.admin-mode .sidebar { display: flex; }
 .nav-divider { border: 0; border-top: 1px solid #334155; margin: 10px 0; }
 .sidebar.mini { width: 55px; }
 .sidebar.mini .sidebar-header { justify-content: center; padding: 12px 0; flex-direction: row; }
-.sidebar.mini .logo-txt { display: none; opacity: 0; }
-.sidebar.mini .nav-text { display: none; opacity: 0; }
-.sidebar.mini .nav-item { justify-content: center; padding: 15px 0; }
+.sidebar.mini .logo-txt, .sidebar.mini .nav-text { display: none; opacity: 0; }
+.sidebar.mini .nav-item { justify-content: center; padding: 10px 0; }
 .sidebar.mini .nav-item .icon { font-size: 15px; margin: 0; width: auto; }
 
-/* MAIN LAYOUT */
-#main-content { flex: 1; padding: 15px; min-width: 0; display: flex; flex-direction: column; transition: all 0.3s ease; }
-.top-nav-container { display: flex; justify-content: space-between; align-items: center; background: #2a3036f8 ; padding: 0 15px; border-bottom: 1px solid #e2e8f0; margin: -15px -15px 15px -15px; height: 50px; flex-shrink: 0; }
+.top-nav-container {display: flex;justify-content: space-between;align-items: center; background-color: var(--top-nav-bg) !important; padding: 0 15px;border-bottom: 1px solid #e2e8f0;margin: -15px -15px 15px -15px;height: 50px;flex-shrink: 0;}
 .tab-menu { display: flex !important; flex-direction: row !important; overflow-x: auto; white-space: nowrap; align-items: center; }
-.tab-btn { padding: 0 15px; height: 50px; border: none; background: none; cursor: pointer; font-weight: bold; color: #fcfcfc; border-bottom: 3px solid transparent; font-size: 12px; display: flex; align-items: center; }
+.tab-btn { padding: 0 10px; height: 50px; border: none; background: none; cursor: pointer; font-weight: bold; color: #fcfcfc; border-bottom: 3px solid transparent; font-size: 12px; display: flex; align-items: center; }
 .tab-btn.active { color: var(--p); border-bottom-color: var(--p); }
 .auth-group { display: flex; align-items: center; gap: 10px; }
 .tab-pane { display: none !important; }
 .tab-pane.active { display: block !important; }
 
-/* TABLES & CARDS */
-.card { background: rgb(221, 221, 221); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.226); margin-bottom: 12px; }
+/* =========================================
+   4. KARTU, FORM & INPUT
+   ========================================= */
+.card { background-color: var(--card-bg) !important; border: 1px solid var(--card-border) !important; padding: 1px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.226); margin-bottom: 12px; }
+.form-row-compact { display: flex; gap: 10px; margin-bottom: 8px; }
+.form-row-compact .f-item { flex: 1; }
+.f-item { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.batch-filter-grid, .filter-grid-log { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end; }
+
+input, select, textarea { width: 100%; background-color: var(--input-bg) !important; border: 1px solid var(--input-border) !important; color: var(--input-text) !important; border-radius: 4px; height: 30px; font-size: 12px; cursor: text; padding: 4px 8px; margin-bottom: 5px; }
+.read-only { background: #dadadb; color: var(--p); font-weight: bold; cursor: not-allowed; }
+
+/* =========================================
+   5. TOMBOL & GRUP FILTER
+   ========================================= */
+.btn-primary { background: var(--btn-filter-bg) !important; border: 1px solid var(--btn-filter-bg) !important; color: white !important; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; height: 30px; }
+.btn-outline {background: transparent !important;border: 1px solid var(--btn-reset-border) !important;color: #4e5257 !important;padding: 5px;border-radius: 4px;cursor: pointer;width: 100%;margin-top: 2px;height: 30px;}
+.btn-export {background: #38c371;color: rgb(255 255 255);border: none;padding: 6px 12px;border-radius: 4px;cursor: pointer;font-weight: bold;font-size: 11px;}
+.btn-logout { background: none; border: 1px solid #ff2020; color: var(--danger); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; display: none; }
+.btn-danger { background: var(--danger); color: rgb(209, 209, 209); border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; height: 30px; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 5px; border-radius: 4px; transition: 0.2s; }
+.btn-icon:hover { background: #fee2e2; }
+
+/* Posisi Presisi Group Filter */
+.btn-filter-group { display: flex !important; flex-direction: row !important; gap: 6px; align-items: flex-end; transform: translateY(-6px)}
+.btn-filter-group button { width: auto !important;margin-top: 0 !important; padding: 0 12px; height: 30px; display: flex; align-items: center; justify-content: center; width: auto; }
+
+/* =========================================
+   6. TABEL, PIVOT & FROZEN PANES
+   ========================================= */
 .overflow-x { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
@@ -62,16 +149,29 @@ th, td { padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
 .table-pivot th, .table-pivot td { border: 1px solid #b1b1b3; text-align: center; }
 .day-header { width: 60px; background: #a3a3a3; }
 .sub-col { width: 30px; font-size: 9px; }
-.sticky-col { position: sticky; background: rgb(197, 198, 207) !important; z-index: 5; border-right: 2px solid #e2e8f0; }
-.k-kode { left: 0; width: 80px; text-align: left !important; }
-.k-nama { left: 80px; width: 120px; text-align: left !important; }
 
-/* SORTABLE HEADERS */
+/* Sortable & Sticky */
 th.sortable { cursor: pointer; user-select: none; transition: background 0.2s ease; position: relative; }
 th.sortable:hover { background-color: #f1f5f9b6; color: var(--p); }
 th.sortable span { font-size: 10px; margin-left: 5px; color: var(--p); }
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { background: rgba(0,0,0,0.1); }
 
-/* FLOATING NON-BLOCKING MODALS */
+.sticky-col { position: sticky !important; background: rgb(197, 198, 207) !important; z-index: 5; border-right: 2px solid #e2e8f0; }
+.k-kode { left: 0; width: 50px; min-width: 50px; text-align: left !important; }
+.k-nama { left: 50px; width: 150px; min-width: 150px; text-align: left !important; }
+.k-awal { left: 198px; width: 40px; min-width: 40px; background-color: #e7fff6 !important; border-right: 2px solid #767779d8 !important; }
+
+/* Frozen Panes Vertical */
+#tableMutasi thead th { position: sticky; z-index: 5; background-color: #e4e4e4; box-shadow: inset 0 -1px 0 #cccccc; }
+#tableMutasi thead tr:nth-child(1) th { top: 0; height: 40px; }
+#tableMutasi thead tr:nth-child(2) th { top: 40px; }
+#tableMutasi thead th.sticky-col { z-index: 10 !important; }
+#tableMutasi thead th.k-awal { z-index: 15 !important; }
+
+/* =========================================
+   7. MODAL, TOAST & AUTOCOMPLETE
+   ========================================= */
 .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; backdrop-filter: blur(1px); }
 .modal-content { background: rgb(207, 207, 207); margin: 4vh auto; padding: 15px; border-radius: 8px; width: 95%; box-shadow: 0 10px 20px rgba(0,0,0,0.2); pointer-events: auto; }
 #modalTrx { background: transparent; backdrop-filter: none; pointer-events: none; }
@@ -79,234 +179,90 @@ th.sortable span { font-size: 10px; margin-left: 5px; color: var(--p); }
 #modalPreview { background: transparent; backdrop-filter: none; pointer-events: none; }
 #modalPreview .modal-content { pointer-events: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; box-shadow: 0 15px 40px rgba(0,0,0,0.25); border: 2px solid var(--p); }
 
-@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-@media (max-width: 768px) { #modalTrx .modal-content { top: auto; bottom: 0; right: 0; left: 0; width: 100%; border-radius: 15px 15px 0 0; max-height: 85vh; animation: slideInUp 0.3s ease-out; } }
-@keyframes slideInUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
 .sz-mini { max-width: 250px; } .sz-medium { max-width: 440px; } .sz-wide { max-width: 550px; } .sz-large { max-width: 700px; }
-input, select, textarea { width: 100%; padding: 4px 8px; margin-bottom: 5px; border: 1px solid #d3d3d3; border-radius: 4px; height: 30px; font-size: 12px; cursor: text; }
-.read-only { background: #dadadb; color: var(--p); font-weight: bold; cursor: not-allowed; }
 
-/* KELOMPOK TOMBOL */
-.btn-primary {background: #005eef;color: rgb(255, 255, 255);border: none;padding: 6px 12px;border-radius: 4px;cursor: pointer;font-weight: bold;width: 100%;height: 30px;}
-.btn-export {background: #0e3dc9;color: rgb(255 255 255);border: none;padding: 6px 12px;border-radius: 4px;cursor: pointer;font-weight: bold;font-size: 11px;}
-.btn-logout {background: none;border: 1px solid #ff2020;color: var(--danger);padding: 5px 10px;border-radius: 4px;cursor: pointer;font-size: 11px;font-weight: bold;display: none;}
-.btn-outline {background: none;border: 1px solid #a33232;padding: 5px;border-radius: 4px;cursor: pointer;color: #854545;width: 100%;margin-top: 2px;height: 30px;}
-.btn-danger { background: var(--danger); color: rgb(209, 209, 209); border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; height: 30px; }
+/* Toast Original */
+.toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 14px; animation: fadeInOut 1s ease-in-out; }
+/* Toast Konfirmasi (Peringatan Batch) */
+.toast-confirm { position: fixed; bottom: 25px; right: 25px; background: #1e293b; color: #f1f5f9; padding: 15px; border-radius: 12px; z-index: 11000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; min-width: 300px; animation: slideInToast 0.3s ease-out; }
 
-/* AUTOCOMPLETE CUSTOM DROPDOWN */
+/* Autocomplete */
 .autocomplete-items { position: absolute; border: 1px solid #cbd5e0; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 180px; overflow-y: auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px; display: none; }
 .autocomplete-items div { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #c3c8ce; font-size: 12px; line-height: 1.4; }
 .autocomplete-items div:hover { background-color: #f7f7f7fd; color: var(--p); }
 .autocomplete-active { background-color: #0dfc052a !important; }
 
+/* Animasi */
+@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideInUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes modalExit { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+@keyframes contentEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInOut { 0% { opacity: 0; bottom: 10px; } 20% { opacity: 1; bottom: 20px; } 80% { opacity: 1; bottom: 20px; } 100% { opacity: 0; bottom: 10px; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideInToast { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+@media (max-width: 768px) { #modalTrx .modal-content { top: auto; bottom: 0; right: 0; left: 0; width: 100%; border-radius: 15px 15px 0 0; max-height: 85vh; animation: slideInUp 0.3s ease-out; } }
+
+/* =========================================
+   8. BADGE & UTILITIES TEKS
+   ========================================= */
 .txt-m { color: var(--success); font-weight: bold; }
-/* --- Warna Indikator Keluar --- */
-.txt-k { 
-    color: var(--danger); 
-    font-weight: bold; 
-}
+.txt-k { color: var(--danger); font-weight: bold; }
+tr.is-verified { background-color: #e1e1e2 !important; color: #166534 !important; }
 
-/* --- Baris Terverifikasi (Light Mode) --- */
-tr.is-verified { 
-    background-color: #e1e1e2 !important; 
-    color: #166534 !important; 
-}
+.badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 10px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+.badge-success { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); } 
+.badge-warning { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2); } 
+.badge-error   { background-color: #f43f5e; box-shadow: 0 2px 4px rgba(244, 63, 94, 0.2); }  
+.badge-danger  { background-color: #000000; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }       
 
-/* --- Baris Terverifikasi (Dark Mode Override) --- */
-.dark-mode tr.is-verified { 
-    background-color: rgba(22, 163, 74, 0.514) !important; /* Hijau gelap transparan */
-    color: #4ade80 !important; /* Hijau terang agar kontras */
-}
 
-/* --- Form Layout --- */
-.form-row-compact { 
-    display: flex; 
-    gap: 10px; 
-    margin-bottom: 8px;
-}
-
-/* Tambahan agar input di dalam row compact seimbang */
-.form-row-compact .f-item {
-    flex: 1;
-}
-.f-item { flex: 1; }
-.batch-filter-grid, .filter-grid-log { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end; }
-/* --- DARK MODE v8.27 --- */
-:root { --bg-in: #9cf59c; --bg-out: #eea8a8; --bg-awal: #f7f17f; --bg-akhir: #5aa0c9; }
+/* =========================================
+   9. TEMA GELAP (DARK MODE KHUSUS)
+   ========================================= */
 body.dark-mode {
-    background-color: #0c1938;
+    background-color: #0c1938 !important;
     color: #bfc8d3;
+    /* Timpa Variabel Light Mode */
+    --app-bg: #0c1938;
+    --card-bg: #141d2c;
+    --card-border: #3d5e8e;
+    --input-bg: #253355;
+    --input-border: #475569;
+    --input-text: #e2e8f0;
+    
     --bg-in: #003512;
     --bg-out: #3d0000;
     --bg-awal: #422006;
     --bg-akhir: #064e3b;
+
+    --top-nav-bg: #071224;   /* Warna saat Dark Mode */
+    --top-nav-text: #e2e8f0;
 }
+
 body.dark-mode .sidebar { background-color: #1e293b; border-right: 1px solid #334155; }
 body.dark-mode .nav-item:hover { background-color: #334155; }
-body.dark-mode .card, body.dark-mode .modal-content {background-color: #141d2c;border: 1px solid #3d5e8e;color: #e2e8f0;}
+body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--card-bg) !important; border: 1px solid var(--card-border) !important; color: #e2e8f0; }
 body.dark-mode table th { background-color: #0f172a; color: #94a3b8; border-color: #334155; }
 body.dark-mode table td, body.dark-mode .modal-content td { border-color: #334155; color: #cbd5e1; }
 body.dark-mode tr:nth-child(even) { background-color: #1e293b; }
 body.dark-mode tr:hover { background-color: #334155; }
-body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #253355; color: #e2e8f0; border-color: #475569; }
-body.dark-mode .read-only {background-color: #243053;}
+
+body.dark-mode .read-only { background-color: #243053 !important; }
 body.dark-mode .autocomplete-items { background-color: #1e293b; border-color: #475569; }
 body.dark-mode .autocomplete-items div { border-bottom: 1px solid #515f72; color: #c6c6c7; }
 body.dark-mode .autocomplete-items div:hover { background-color: #334155; }
+
 body.dark-mode .tab-btn { background-color: #354153; color: #94a3b8; border-color: #dfe0e2; }
 body.dark-mode .tab-btn.active { background-color: #3b82f6; color: rgb(255, 255, 255); }
 body.dark-mode #global-header, body.dark-mode #previewHeader, body.dark-mode #trxHeader { background-color: #1e293b !important; border-bottom: 1px solid #334155 !important; color: #e2e8f0 !important; }
 body.dark-mode #previewContent { background-color: #0f172a !important; border-color: #475569 !important; }
-/* --- PERBAIKAN BUG STICKY COLUMN PIVOT DARK MODE --- */
-body.dark-mode th.sticky-col,
-body.dark-mode td.sticky-col {
-    background-color: #1e293b !important;
-    color: #e2e8f0 !important;
-    border-color: #334155 !important;
-}
-body.dark-mode th.sticky-col {
-    background-color: #0f172a !important;
-}
-/* --- FROZEN PANES PIVOT (STICKY HEADER VERTICAL & HORIZONTAL) --- */
-/* 1. Beri background pada semua header agar angka tidak tembus saat discroll */
-#tableMutasi thead th {
-    position: sticky;
-    z-index: 5;
-    background-color: #e4e4e4; /* Warna terang */
-    box-shadow: inset 0 -1px 0 #cccccc; /* Pengganti border bawah */
-}
 
-/* 2. Warna header saat Dark Mode aktif */
-body.dark-mode #tableMutasi thead th {
-    background-color: #0f172a;
-    box-shadow: inset 0 -1px 0 #334155;
-}
-
-/* 3. Kunci Baris Pertama (Kode, Nama, Awal, Tgl, IN, OUT, Akhir) ke atap layar */
-#tableMutasi thead tr:nth-child(1) th {
-    top: 0;
-    height: 40px; /* Kunci tingginya agar baris kedua sejajar */
-}
-
-/* 4. Kunci Baris Kedua (M, K) tepat di bawah baris pertama */
-#tableMutasi thead tr:nth-child(2) th {
-    top: 40px; 
-}
-
-/* 5. Kunci Sudut Emas (Pertemuan Scroll Atas & Kiri) */
-/* Harus z-index paling tinggi agar tidak tertabrak angka dari bawah maupun kanan */
-#tableMutasi thead th.sticky-col {
-    z-index: 10 !important;
-}
-.sortable { cursor: pointer; user-select: none; }
-.sortable:hover { background-color: rgb(206, 240, 191) !important; color: var(--p) !important; }
+body.dark-mode tr.is-verified { background-color: rgba(22, 163, 74, 0.514) !important; color: #4ade80 !important; }
 body.dark-mode .sortable:hover { background-color: rgb(174, 245, 172) !important; color: rgb(255, 255, 255) !important; }
 
-/* --- FROZEN PANES: TIGA KOLOM PERTAMA (KODE, NAMA, AWAL) --- */
-
-/* 1. Tentukan Lebar Tetap agar perhitungan 'left' tidak meleset */
-.k-kode { left: 0; width: 50px; min-width: 50px; }
-.k-nama { left: 50px; width: 150px; min-width: 150px; }
-.k-awal { left: 198px; width: 40px; min-width: 40px; } /* Jarak = 100 + 180 */
-
-/* 2. Pastikan semuanya Sticky */
-.sticky-col {
-    position: sticky !important;
-    z-index: 3; /* Lebih tinggi dari angka harian */
-}
-
-/* 3. Atur Warna di Mode Terang */
-.k-awal { background-color: #e7fff6 !important; border-right: 2px solid #767779d8 !important; }
-
-/* 4. Atur Warna di Mode Gelap (Dark Mode) */
-body.dark-mode .k-awal { 
-    background-color: #422006 !important; 
-    color: #fde68a !important; 
-    border-right: 2px solid #334155 !important;
-}
-
-/* 5. Z-Index Spesial untuk Header (Sudut Kiri Atas) */
-#tableMutasi thead th.k-awal {
-    z-index: 15 !important;
-}
-
-/* --- ANIMASI TRANSISI v8.30 --- */
-@keyframes modalExit {
-    from { opacity: 1; transform: scale(1); }
-    to { opacity: 0; transform: scale(0.95); }
-}
-
-@keyframes contentEnter {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.modal-animate-out { animation: modalExit 0.4s ease-in forwards; }
-.content-animate-in { animation: contentEnter 0.6s ease-out forwards; }
-
-/* Inisialisasi awal agar konten bisa muncul lewat animasi */
-#main-content { opacity: 0; }
-#main-content.visible { opacity: 1; }
-
-/* Toast Notification Style */
-.toast-container {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1e293b;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-size: 14px;
-    animation: fadeInOut 1s ease-in-out;
-}
-
-@keyframes fadeInOut {
-    0% { opacity: 0; bottom: 10px; }
-    20% { opacity: 1; bottom: 20px; }
-    80% { opacity: 1; bottom: 20px; }
-    100% { opacity: 0; bottom: 10px; }
-}
-
-.btn-icon {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 2px 5px;
-    border-radius: 4px;
-    transition: 0.2s;
-}
-.btn-icon:hover {
-    background: #fee2e2; /* Merah muda halus */
-}
-
-/* style.css */
-.sortable {
-    cursor: pointer;
-    user-select: none;
-}
-.sortable:hover {
-    background: rgba(0,0,0,0.1);
-}
-
-/* Styling Badge Status */
-.badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 50px; /* Membuat bentuk kapsul */
-    font-size: 10px;
-    font-weight: 800;
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.badge-success { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); } /* Hijau */
-.badge-warning { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2); } /* Oranye */
-.badge-error   { background-color: #f43f5e; box-shadow: 0 2px 4px rgba(244, 63, 94, 0.2); }  /* Pink Tua/Kritis */
-.badge-danger  { background-color: #000000; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }       /* Hitam/Merah Gelap */
+/* Pivot & Frozen Panes (Dark Mode) */
+body.dark-mode th.sticky-col, body.dark-mode td.sticky-col { background-color: #1e293b !important; color: #e2e8f0 !important; border-color: #334155 !important; }
+body.dark-mode th.sticky-col { background-color: #0f172a !important; }
+body.dark-mode #tableMutasi thead th { background-color: #0f172a; box-shadow: inset 0 -1px 0 #334155; }
+body.dark-mode .k-awal { background-color: #422006 !important; color: #fde68a !important; border-right: 2px solid #334155 !important; }
