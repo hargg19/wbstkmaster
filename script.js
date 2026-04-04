@@ -3,6 +3,8 @@ const SUPABASE_URL = "https://vwgdrmyrutsjwnmzfrwv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Z2RybXlydXRzandubXpmcnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3OTMyMjQsImV4cCI6MjA5MDM2OTIyNH0.8abwamRFE-hVpA4Xyy4zcZAbZt-Gm6tYaMDfpkh9-nI";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+let hasAlertedExpired = false; // Harus di luar objek UI/App agar nilainya tersimpan
+
 const Draggable = {
     init: (elId, handleId) => {
         const el = document.getElementById(elId); const handle = document.getElementById(handleId); if (!el || !handle) return;
@@ -243,7 +245,19 @@ expandDate: (el) => {
     if (el.id.startsWith('f_')) UI.refresh();
 },
     sortStok: (col) => { if (UI.sortCol === col) { UI.sortAsc = !UI.sortAsc; } else { UI.sortCol = col; UI.sortAsc = true; } UI.refresh(); },
-    
+
+  sortDayCol: 'tgl', // default sort
+  sortDayAsc: true,
+
+  sortDay: (col) => {
+    if (UI.sortDayCol === col) {
+        UI.sortDayAsc = !UI.sortDayAsc;
+    } else {
+        UI.sortDayCol = col;
+        UI.sortDayAsc = true;
+    }
+    UI.refresh();
+  },
     sortMutasi: (col) => {
         if (UI.sortMutasiCol === col) { UI.sortMutasiAsc = !UI.sortMutasiAsc; } 
         else { UI.sortMutasiCol = col; UI.sortMutasiAsc = true; }
@@ -290,6 +304,46 @@ expandDate: (el) => {
             document.getElementById('f_tgl_2').value = DateHelper.toUI(today);
         } UI.refresh();
     },
+
+    // --- script.js ---
+
+  clearFilter: (type) => {
+    if (type === 'log') {
+        const now = new Date();
+        const past = new Date();
+        past.setDate(now.getDate() - 30); // Kurangi 30 hari
+
+        // Fungsi pembantu format DD-MM-YYYY
+        const fmt = (d) => {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}-${month}-${year}`;
+        };
+
+        const elT1 = document.getElementById('f_tgl_1');
+        const elT2 = document.getElementById('f_tgl_2');
+        const elKode = document.getElementById('l_f_kode');
+        const elTipe = document.getElementById('f_tipe');
+
+        // Set Rentang Tanggal: 30 hari lalu s/d sekarang
+        if (elT1) elT1.value = fmt(past);
+        if (elT2) elT2.value = fmt(now);
+        
+        // Reset filter lainnya
+        if (elKode) elKode.value = '';
+        if (elTipe) elTipe.value = 'ALL';
+
+    } else if (type === 'batch') {
+        const ids = ['b_f_kode', 'b_f_nama', 'b_f_stok'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+    
+    UI.refresh(); // Jalankan filter ulang dengan rentang tanggal baru
+  },
 
     showAutoList: (type, formType = '') => {
         const inpId = type === 'k' ? 't_k' : (type === 'n' ? 't_n' : (type === 'b_f_k' ? 'b_f_kode' : (type === 'b_f_n' ? 'b_f_nama' : (type === 'l_f_k' ? 'l_f_kode' : 'l_f_nama'))));
@@ -378,28 +432,28 @@ toggleVerify: async (id) => {
     }
 },
 
-
   refresh: () => {
     // 1. Ambil data & hitung stok
     const ms = DB.get('m') || []; 
     const l = DB.get('l') || []; 
-    const act = Engine.calculate(); // Pastikan Engine.calculate() return array berisi {kode, stok, ...}
+    const act = Engine.calculate(); // Menghitung stok real-time
 
     const searchEl = document.getElementById('searchInput'); 
     const qG = searchEl ? searchEl.value.toUpperCase() : '';
     const session = DB.get('currentUser') || {}; 
     const isAdmin = session.role === 'admin';
     
+    // Kontrol tampilan kolom aksi untuk Admin
     const thAksi = document.getElementById('th_aksi'); 
     if(thAksi) thAksi.style.display = isAdmin ? 'table-cell' : 'none';
 
-    // --- FUNGSI PEMBANTU UNTUK CEK TAB AKTIF ---
+    // Fungsi pembantu mengecek tab mana yang sedang dibuka
     const isTabActive = (id) => {
         const el = document.getElementById('tab-' + id);
         return el && el.classList.contains('active');
     };
 
-    // --- TAB STOK (LOGIKA STATUS INTUITIF) ---
+    // --- LOGIKA TAB STOK ---
     if(isTabActive('stok')) {
         let stokData = ms.filter(m => (m.kode||'').toUpperCase().includes(qG) || (m.nama||'').toUpperCase().includes(qG)).map(m => {
             const bts = act.filter(b => b.kode === m.kode);
@@ -407,7 +461,7 @@ toggleVerify: async (id) => {
             return { kode: m.kode || '-', nama: m.nama || '-', stok: ttl };
         });
 
-        // Sorting
+        // Sorting Data Stok
         stokData.sort((a, b) => {
             let vA = a[UI.sortCol]; let vB = b[UI.sortCol];
             if(typeof vA === 'string') { vA = vA.toUpperCase(); vB = vB.toUpperCase(); }
@@ -418,17 +472,11 @@ toggleVerify: async (id) => {
         const invBody = document.getElementById('inventoryBody');
         if(invBody) {
             invBody.innerHTML = stokData.map(m => {
-                // LOGIKA STATUS PRIORITAS STOK
                 let statusTag = "";
-                if (m.stok <= 0) {
-                    statusTag = '<span class="badge badge-danger">🚫 HABIS</span>';
-                } else if (m.stok <= 15) {
-                    statusTag = '<span class="badge badge-error">🚨 KRITIS</span>';
-                } else if (m.stok <= 25) {
-                    statusTag = '<span class="badge badge-warning">⚠️ MENIPIS</span>';
-                } else {
-                    statusTag = '<span class="badge badge-success">✅ AMAN</span>';
-                }
+                if (m.stok <= 0) statusTag = '<span class="badge badge-danger">🚫 HABIS</span>';
+                else if (m.stok <= 15) statusTag = '<span class="badge badge-error">🚨 KRITIS</span>';
+                else if (m.stok <= 25) statusTag = '<span class="badge badge-warning">⚠️ MENIPIS</span>';
+                else statusTag = '<span class="badge badge-success">✅ AMAN</span>';
 
                 let actionBtn = isAdmin ? `<td style="text-align:center;"><button class="btn-outline" style="padding:2px 8px; font-size:11px; margin:0;" onclick="App.editMaster('${m.kode}')">✏️ Edit</button></td>` : '';
                 
@@ -441,17 +489,23 @@ toggleVerify: async (id) => {
                 </tr>`;
             }).join('');
         }
-        ['kode', 'nama', 'stok'].forEach(c => { const el = document.getElementById(`sort_${c}`); if(el) el.innerHTML = UI.sortCol === c ? (UI.sortAsc ? '▲' : '▼') : ''; });
+        ['kode', 'nama', 'stok'].forEach(c => { 
+            const el = document.getElementById(`sort_${c}`); 
+            if(el) el.innerHTML = UI.sortCol === c ? (UI.sortAsc ? '▲' : '▼') : ''; 
+        });
     }
 
-    // --- RENDER TAB LAINNYA ---
-    if(isTabActive('day-in')) UI.renderDaily('day-in', 'IN', ms, l); 
+    // --- LOGIKA TAB MASUK & KELUAR (Filter Tanggal) ---
+    if(isTabActive('day-in')) UI.renderDaily('day-in', 'IN', ms, l);
     if(isTabActive('day-out')) UI.renderDaily('day-out', 'OUT', ms, l);
+
+    // --- LOGIKA TAB LAINNYA ---
     if(isTabActive('mutasi')) UI.renderMutasiPivot(ms, l);
     if(isTabActive('batch')) UI.renderBatch(ms, act);
     if(isTabActive('log')) UI.renderLog(ms, l);
     if(isTabActive('expiry')) UI.renderExpiry();
-},
+    if (isTabActive('summary')) UI.renderSummary(ms, l);
+  },
 
    renderMutasiPivot: (ms, l) => {
         const selM = document.getElementById('f_mutasi_m'); 
@@ -543,80 +597,97 @@ renderDaily: (id, tipe, ms, l) => {
     const pane = document.getElementById('tab-' + id); 
     if (!pane || !pane.classList.contains('active')) return;
     
-    // Sesuaikan prefix ID (f_in atau f_out)
     const pf = id === 'day-in' ? 'f_in' : 'f_out';
     
+    // Ambil nilai filter
     const dVal = document.getElementById(`${pf}_d`)?.value;
     const mVal = document.getElementById(`${pf}_m`)?.value;
     const yVal = document.getElementById(`${pf}_y`)?.value;
-    const qVal = document.getElementById(`${pf}_q`)?.value.toUpperCase();
+    const qVal = (document.getElementById(`${pf}_q`)?.value || '').toUpperCase();
 
-    // 1. FILTER DATA BERDASARKAN D, M, Y
+    // 1. FILTER DATA
     let filtered = l.filter(x => {
         if (x.tipe !== tipe) return false;
-        
-        // Asumsi x.tgl formatnya YYYY-MM-DD
-        const [y, m, d] = x.tgl.split('-'); 
-        
+        const [y, m, d] = (x.tgl || '').split('-'); 
         const matchD = dVal ? parseInt(d) === parseInt(dVal) : true;
         const matchM = mVal ? parseInt(m) === parseInt(mVal) : true;
         const matchY = yVal ? parseInt(y) === parseInt(yVal) : true;
-        
         const mData = ms.find(item => item.kode === x.kode) || {};
         const matchQ = (x.kode + (mData.nama || '')).toUpperCase().includes(qVal);
-
         return matchD && matchM && matchY && matchQ;
     });
 
-    // 2. LOGIKA SORTING (Tetap sama seperti kode Anda)
+    // 2. LOGIKA SORTING BERTINGKAT
     filtered.sort((a, b) => {
+        const isVA = (a.v === true || a.v === 'true');
+        const isVB = (b.v === true || b.v === 'true');
+
+        // PRIORITAS 1: Verifikasi (Yang sudah verif/true selalu di bawah)
+        if (isVA !== isVB) return isVA ? 1 : -1;
+
+        // PRIORITAS 2: Berdasarkan Kolom yang diklik (User Sort)
         let vA = a[UI.sortDayCol] || '';
         let vB = b[UI.sortDayCol] || '';
+
         if (UI.sortDayCol === 'nama') {
             vA = (ms.find(m => m.kode === a.kode)?.nama || '').toUpperCase();
             vB = (ms.find(m => m.kode === b.kode)?.nama || '').toUpperCase();
         } else if (typeof vA === 'string') {
-            vA = vA.toUpperCase(); vB = vB.toUpperCase();
+            vA = vA.toUpperCase(); 
+            vB = vB.toUpperCase();
         }
+
         if (vA < vB) return UI.sortDayAsc ? -1 : 1;
         if (vA > vB) return UI.sortDayAsc ? 1 : -1;
+
+        // PRIORITAS 3: Default Batch Ascending (Jika status verif & kolom sort sama)
+        const batchA = (a.batch || '').toUpperCase();
+        const batchB = (b.batch || '').toUpperCase();
+        if (batchA < batchB) return -1;
+        if (batchA > batchB) return 1;
+
         return 0;
     });
 
     // 3. RENDER KE HTML
     const isAdmin = (DB.get('currentUser') || {}).role === 'admin';
-    const tbodyId = id === 'day-in' ? 'dayinTableBody' : 'dayoutTableBody';
+    const tbodyId = id === 'day-in' ? 'dayInBody' : 'dayOutBody';
+    const targetBody = document.getElementById(tbodyId);
     
-    document.getElementById(tbodyId).innerHTML = filtered.map(x => {
-        const m = ms.find(i => i.kode === x.kode);
-        const isV = (x.v === true || x.v === 'true');
-        
-        return `
-            <tr class="${isV ? 'is-verified' : ''}" style="${isV ? 'background-color: #f0fdf4;' : ''}">
-                <td>${x.ref || '-'}</td>
-                <td><b>${x.kode}</b></td>
-                <td style="font-size:11px;">${m ? m.nama : '-'}</td>
-                <td align="center">${x.batch || '-'}</td>
-                <td align="right"><b>${x.qty}</b></td>
-                <td style="font-size:10px;">${x.ket || '-'}</td>
-                <td align="center">${isAdmin ? `<input type="checkbox" ${isV?'checked':''} onchange="UI.toggleVerify('${x.id}')">` : (isV?'✅':'-')}</td>
-                <td align="center">
-                    ${isAdmin ? `
-                        <button class="btn-icon" onclick="App.editLog('${x.id}')">📝</button>
-                        <button class="btn-icon" onclick="App.deleteLog('${x.id}')" style="color:red">🗑️</button>
-                    ` : '-'}
-                </td>
-            </tr>`;
-    }).join('') || '<tr><td colspan="8" align="center">Klik Filter untuk muat data...</td></tr>';
-},
+    if (targetBody) {
+        targetBody.innerHTML = filtered.map(x => {
+            const m = ms.find(i => i.kode === x.kode);
+            const isV = (x.v === true || x.v === 'true');
+            
+            return `
+                <tr class="${isV ? 'is-verified' : ''}" style="${isV ? 'background-color: #f0fdf4;' : ''}">
+                    <td>${x.ref || '-'}</td>
+                    <td><b>${x.kode}</b></td>
+                    <td style="font-size:11px;">${m ? m.nama : '-'}</td>
+                    <td align="center">${x.batch || '-'}</td>
+                    <td align="right"><b>${x.qty}</b></td>
+                    <td style="font-size:10px;">${x.ket || '-'}</td>
+                    <td align="center">
+                        ${isAdmin ? `<input type="checkbox" ${isV ? 'checked' : ''} onchange="UI.toggleVerify('${x.id}')">` : (isV ? '✅' : '-')}
+                    </td>
+                    <td align="center">
+                        ${isAdmin ? `
+                            <button class="btn-icon" onclick="App.editLog('${x.id}')">📝</button>
+                            <button class="btn-icon" onclick="App.deleteLog('${x.id}')" style="color:red">🗑️</button>
+                        ` : '-'}
+                    </td>
+                </tr>`;
+        }).join('') || '<tr><td colspan="8" align="center">Data tidak ditemukan...</td></tr>';
+    }
+  },
 
-    initFilterDate: () => {
+initFilterDate: () => {
     const now = new Date();
     const curY = now.getFullYear();
     const curM = now.getMonth() + 1;
     const curD = now.getDate();
 
-    ['f_in', 'f_out'].forEach(pf => {
+    ['f_in', 'f_out', 'f_sum'].forEach(pf => {
         // Isi Dropdown Tahun (5 tahun terakhir)
         const selY = document.getElementById(`${pf}_y`);
         if (selY) {
@@ -632,15 +703,104 @@ renderDaily: (id, tipe, ms, l) => {
     });
 },
 
-resetFilterDay: (type) => {
-    const now = new Date();
-    const pf = `f_${type}`;
-    document.getElementById(`${pf}_d`).value = now.getDate();
-    document.getElementById(`${pf}_m`).value = now.getMonth() + 1;
-    document.getElementById(`${pf}_y`).value = now.getFullYear();
-    document.getElementById(`${pf}_q`).value = '';
-    UI.refresh(); // Langsung load data hari ini
+        renderSummary: (ms, l) => {
+    const dVal = document.getElementById('f_sum_d')?.value;
+    const mVal = document.getElementById('f_sum_m')?.value;
+    const yVal = document.getElementById('f_sum_y')?.value;
+    const tVal = document.getElementById('f_sum_type')?.value; // IN, OUT, atau ALL
+
+    // 1. FILTER
+    let filtered = l.filter(x => {
+        const [y, m, d] = (x.tgl || '').split('-');
+        const matchD = dVal ? parseInt(d) === parseInt(dVal) : true;
+        const matchM = mVal ? parseInt(m) === parseInt(mVal) : true;
+        const matchY = yVal ? parseInt(y) === parseInt(yVal) : true;
+        const matchT = (tVal === 'ALL' || !tVal) ? true : x.tipe === tVal;
+        return matchD && matchM && matchY && matchT;
+    });
+
+    // 2. SORTING (Tanpa Verified Sort)
+    filtered.sort((a, b) => {
+        // Prioritas 1: Kolom yang diklik (Default: No. Ref)
+        // Jika UI.sortDayCol bernilai default 'tgl', kita arahkan ke 'ref'
+        let col = (UI.sortDayCol === 'tgl' || !UI.sortDayCol) ? 'ref' : UI.sortDayCol; 
+        
+        let vA = a[col] || '';
+        let vB = b[col] || '';
+
+        if (col === 'nama') {
+            vA = (ms.find(m => m.kode === a.kode)?.nama || '').toUpperCase();
+            vB = (ms.find(m => m.kode === b.kode)?.nama || '').toUpperCase();
+        } else if (typeof vA === 'string') {
+            vA = vA.toUpperCase(); 
+            vB = vB.toUpperCase();
+        }
+
+        if (vA < vB) return UI.sortDayAsc ? -1 : 1;
+        if (vA > vB) return UI.sortDayAsc ? 1 : -1;
+        
+        // Prioritas 2: Secondary sort selalu Batch Ascending
+        const batchA = (a.batch || '').toUpperCase();
+        const batchB = (b.batch || '').toUpperCase();
+        if (batchA < batchB) return -1;
+        if (batchA > batchB) return 1;
+
+        return 0;
+    });
+
+    // 3. RENDER
+    const target = document.getElementById('summaryBody');
+    if (target) {
+        target.innerHTML = filtered.map(x => {
+            const m = ms.find(i => i.kode === x.kode);
+            const tipeClass = x.tipe === 'IN' ? 'badge-success' : 'badge-danger';
+            const tipeText = x.tipe === 'IN' ? 'MASUK' : 'KELUAR';
+            
+            return `
+                <tr>
+                    <td>${x.ref || '-'}</td>
+                    <td><span class="badge ${tipeClass}">${tipeText}</span></td>
+                    <td><b>${x.kode}</b></td>
+                    <td style="font-size:11px;">${m ? m.nama : '-'}</td>
+                    <td align="right"><b>${x.qty}</b></td>
+                </tr>`;
+        }).join('') || '<tr><td colspan="5" align="center">Data tidak ditemukan...</td></tr>';
+    }
 },
+
+  // --- script.js ---
+
+  resetFilterDay: (prefix) => {
+    const d = new Date();
+    const elD = document.getElementById(prefix + '_d');
+    const elM = document.getElementById(prefix + '_m');
+    const elY = document.getElementById(prefix + '_y');
+    const elT = document.getElementById(prefix + '_type'); // Khusus untuk Summary
+
+    // Set Tanggal ke Hari Ini
+    if (elD) elD.value = d.getDate();
+    if (elM) elM.value = d.getMonth() + 1;
+    if (elY) elY.value = d.getFullYear();
+
+    // Reset Jenis Transaksi (Jika di tab Summary)
+    if (elT) elT.value = 'ALL';
+
+    // Jika ini tab Log, gunakan logika 30 hari (opsional jika prefix === 'f_log')
+    if (prefix === 'f_log') {
+        const past = new Date();
+        past.setDate(d.getDate() - 30);
+        const fmt = (date) => {
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return `${dd}-${mm}-${yyyy}`;
+        };
+        if(document.getElementById('f_tgl_1')) document.getElementById('f_tgl_1').value = fmt(past);
+        if(document.getElementById('f_tgl_2')) document.getElementById('f_tgl_2').value = fmt(d);
+    }
+
+    UI.refresh();
+  },
     renderBatch: (ms, act) => {
         const qK = document.getElementById('b_f_kode').value.toUpperCase(), qN = document.getElementById('b_f_nama').value.toUpperCase();
         let ttlS = 0, htmlContent = '';
@@ -926,36 +1086,58 @@ renderExpiry: () => {
         setTimeout(() => t.remove(), 2000); 
     },
 
-    showExpiredAlert: (count) => {
-        // Cegah duplikasi toast jika sudah ada di layar
-        if (document.querySelector('.toast-expired-alert')) return;
+  
 
-        const toast = document.createElement('div');
-        toast.className = 'toast-expired-alert';
-        toast.innerHTML = `
-            <div style="font-size: 24px;">⚠️</div>
-            <div style="flex:1">
-                <strong style="display:block; font-size:14px; margin-bottom:2px;">PENGINGAT KADALUWARSA</strong>
-                <span style="font-size:12px; opacity:0.9;">Ada ${count} item mendekati expired (Cek Tab Expired untuk detail).</span>
-            </div>
-            <div style="font-size:18px; opacity:0.5;">&times;</div>
-        `;
+    // --- Di dalam objek UI ---
+showExpiredAlert: (count) => {
+    // 1. Cek apakah sudah pernah muncul di sesi ini
+    if (hasAlertedExpired) return;
 
-        toast.onclick = () => {
-            UI.switchTab('expiry'); 
+    // 2. Cegah duplikasi elemen di DOM
+    if (document.querySelector('.toast-expired-alert')) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-expired-alert';
+    toast.innerHTML = `
+        <div style="font-size: 24px;">⚠️</div>
+        <div style="flex:1">
+            <strong style="display:block; font-size:14px; margin-bottom:2px;">PENGINGAT KADALUWARSA</strong>
+            <span style="font-size:12px; opacity:0.9;">Ada ${count} item mendekati expired (Cek Tab Expired untuk detail).</span>
+        </div>
+        <div class="close-toast" style="font-size:22px; opacity:0.5; padding: 0 5px; cursor:pointer;">&times;</div>
+    `;
+
+    // Tandai sudah muncul
+    hasAlertedExpired = true;
+
+    // Logika Klik
+    toast.onclick = (e) => {
+        // Jika yang diklik adalah tombol silang (×), cukup tutup toast
+        if (e.target.classList.contains('close-toast')) {
             toast.remove();
-        };
-
-        document.body.appendChild(toast);
+            return;
+        }
         
-        // Hilang otomatis setelah 20 detik
-        //setTimeout(() => { if(toast) toast.remove(); }, 20000);
-    },
+        // Jika klik area lain, pindah ke tab expiry
+        const btnExpiry = document.querySelector('[data-tab="expiry"]');
+        UI.switchTab('expiry', btnExpiry); 
+        toast.remove();
+    };
+
+    document.body.appendChild(toast);
+    
+    // Auto remove setelah 60 detik
+    setTimeout(() => { 
+        if (document.body.contains(toast)) toast.remove(); 
+    }, 60000);
+}
 };
 
 const App = {
     syncLoad: async () => {
         
+        let hasAlertedExpired = false;
+
         const btn = document.querySelector('button[onclick="App.syncLoad()"]');
         if (btn) {
             btn.disabled = true;
