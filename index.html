@@ -39,20 +39,26 @@
     <main id="main-content">
         <div class="top-nav-container">
             <div id="tab-nav" class="tab-menu">
-                <button class="tab-btn active" onclick="UI.switchTab('stok', this)">📦 Stok</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('day-in', this)">📝 Masuk</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('day-out', this)">🚛 Keluar</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('mutasi', this)">📊 Mutasi Pivot</button>
-                <button class="tab-btn private" style="display:none" onclick="UI.switchTab('batch', this)">🗂️ Batch Viewer</button>
-                <button class="tab-btn private" style="display:none; color:#d97706;" onclick="UI.switchTab('expiry', this)">⚠️ Near Expired</button>
-                
-                <script>
-                    const session = JSON.parse(localStorage.getItem('currentUser')) || {};
-                    if (session.role === 'admin') {
-                        document.write('<button class="tab-btn private" style="display:none" onclick="UI.switchTab(\'log\', this)">📜 Log Transaksi</button>');
-                    }
-                </script>
-            </div>
+    <button class="tab-btn active" onclick="UI.switchTab('stok', this)">📦 Stok</button>
+    
+    <script>
+        // Ambil session secara instan sebelum sisa HTML dirender
+        const user = JSON.parse(localStorage.getItem('currentUser')) || { role: 'guest' };
+        const isAdmin = user.role === 'admin';
+
+
+        // Tab yang HANYA muncul untuk Admin
+        if (isAdmin) {
+            document.write('<button class="tab-btn private" data-tab="day-in" onclick="UI.switchTab(\'day-in\', this)">📝 Masuk</button>');
+            document.write('<button class="tab-btn private" data-tab="day-out" onclick="UI.switchTab(\'day-out\', this)">🚛 Keluar</button>');
+            document.write('<button class="tab-btn private" data-tab="day-log" onclick="UI.switchTab(\'log\', this)">📜 Log Transaksi</button>');
+        }
+        document.write('<button class="tab-btn private" data-tab="batch" onclick="UI.switchTab(\'batch\', this)">🗂️ Batch Viewer</button>');
+        document.write('<button class="tab-btn private" data-tab="mutasi" onclick="UI.switchTab(\'mutasi\', this)">📊 Mutasi Pivot</button>');
+        document.write('<button class="tab-btn private" data-tab="expiry" style="color:#d97706;" onclick="UI.switchTab(\'expiry\', this)">⚠️ Expired</button>');
+    </script>
+</div>
+        
             
             <div class="auth-group">
                 <button id="btnTheme" class="btn-outline" style="margin-top: 0;" onclick="UI.toggleTheme()">🌙</button>

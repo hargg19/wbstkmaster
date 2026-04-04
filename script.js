@@ -57,7 +57,7 @@ const DB = {
             .subscribe();
     }
 };
-
+window.DB = DB;
 const DateHelper = {
     toDB: (str) => { 
         if(!str) return ""; let p = str.split('-'); if(p.length !== 3) return "";
@@ -106,22 +106,50 @@ const Auth = {
         btn.innerText = originalText; btn.disabled = false;
     },
     applySession: (role) => {
-        if(!role) return;
-        document.body.className = (role === 'admin' ? 'admin-mode' : 'staff-mode') + (localStorage.getItem('theme') === 'dark' ? ' dark-mode' : '');
-        document.querySelectorAll('.private').forEach(el => el.style.display = 'block');
+        if(!role || role === 'guest') return; 
         
-        if (role !== 'admin') { 
-            const btnPush = document.getElementById('btnPushDrive'); if (btnPush) btnPush.style.display = 'none'; 
-            const btnExport = document.getElementById('btnExportExcel'); if (btnExport) btnExport.style.display = 'none'; 
+        const isAdmin = role === 'admin';
+        // 1. Tentukan Class Body (Admin/Staff + Dark Mode)
+        document.body.className = (isAdmin ? 'admin-mode' : 'staff-mode') + (localStorage.getItem('theme') === 'dark' ? ' dark-mode' : '');
+        
+        // 2. HAPUS BARIS forEach(.private) yang lama agar tidak memaksa tab muncul kembali.
+        // Kita biarkan document.write di HTML yang menentukan tab mana yang tercipta.
+
+        if (!isAdmin) { 
+            // Logika khusus Staff
+            const btnExport = document.getElementById('btnExportExcel'); 
+            if (btnExport) btnExport.style.display = 'none'; 
         } else {
-            document.getElementById('sidebar').classList.add('mini');
+            // Logika khusus Admin
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.add('mini');
         }
-        document.getElementById('btnAuth').style.display = 'none'; document.getElementById('btnLogout').style.display = 'block';
+        
+        // 3. Kontrol Tombol Auth
+        const btnAuth = document.getElementById('btnAuth');
+        const btnLogout = document.getElementById('btnLogout');
+        if (btnAuth) btnAuth.style.display = 'none'; 
+        if (btnLogout) btnLogout.style.display = 'block';
+
+        // 4. Picu Toast Expired
+        setTimeout(() => {
+            if (typeof UI.renderExpiry === 'function') {
+                UI.renderExpiry();
+            }
+        }, 1000);
     },
     logout: async () => { 
-        await sb.auth.signOut();
-        localStorage.removeItem('currentUser'); 
-        location.reload(); 
+        try {
+            await sb.auth.signOut();
+            localStorage.removeItem('currentUser'); 
+            // Opsional: bersihkan cache log agar benar-benar fresh saat ganti akun
+            localStorage.removeItem('l');
+            location.reload(); 
+        } catch (err) {
+            console.error("Logout Error:", err);
+            localStorage.clear();
+            location.reload();
+        }
     }
 };
 
@@ -700,37 +728,42 @@ resetFilterDay: (type) => {
 },
 
 renderExpiry: () => {
-    const act = Engine.calculate(); 
-    const tbody = document.getElementById('expiryTableBody');
-    if(!tbody) return;
+        const act = Engine.calculate(); 
+        const tbody = document.getElementById('expiryTableBody');
+        if(!tbody) return;
 
-    const today = new Date();
-    const alertLimit = new Date();
-    alertLimit.setDate(today.getDate() + 90); // Munculkan yang expired dalam 90 hari ke depan
+        const today = new Date();
+        const alertLimit = new Date();
+        alertLimit.setDate(today.getDate() + 90); // Batas 90 hari sesuai kode Anda
 
-    const data = act.filter(b => {
-        if(!b.exp) return false;
-        const eDate = new Date(b.exp);
-        return eDate <= alertLimit && b.stok > 0;
-    }).sort((a, b) => new Date(a.exp) - new Date(b.exp));
+        const data = act.filter(b => {
+            if(!b.exp) return false;
+            const eDate = new Date(b.exp);
+            return eDate <= alertLimit && b.stok > 0;
+        }).sort((a, b) => new Date(a.exp) - new Date(b.exp));
 
-    tbody.innerHTML = data.map(b => {
-        const m = DB.get('m').find(x => x.kode === b.kode);
-        const eDate = new Date(b.exp);
-        const diff = Math.ceil((eDate - today) / (1000 * 60 * 60 * 24));
-        const statusClass = diff <= 30 ? 'txt-k' : 'txt-m'; // Merah jika < 30 hari
+        // PEMICU TOAST: Jika ada data hasil filter, munculkan alert
+        if (data.length > 0) {
+            UI.showExpiredAlert(data.length);
+        }
 
-        return `<tr>
-            <td>${b.kode}</td>
-            <td>${m ? m.nama : '-'}</td>
-            <td>${b.batch}</td>
-            <td>${b.stok}</td>
-            <td class="${statusClass}"><b>${DateHelper.toUI(b.exp)}</b></td>
-            <td>${diff} Hari lagi</td>
-            <td><span class="badge-${diff <= 30 ? 'danger' : 'warning'}">⚠️ ${diff <= 0 ? 'KADALUWARSA' : 'DEKAT EXP'}</span></td>
-        </tr>`;
-    }).join('');
-},
+        tbody.innerHTML = data.map(b => {
+            const m = DB.get('m').find(x => x.kode === b.kode);
+            const eDate = new Date(b.exp);
+            const diff = Math.ceil((eDate - today) / (1000 * 60 * 60 * 24));
+            const statusClass = diff <= 30 ? 'txt-k' : 'txt-m'; 
+
+            return `<tr>
+                <td>${b.kode}</td>
+                <td>${m ? m.nama : '-'}</td>
+                <td>${b.batch}</td>
+                <td>${b.stok}</td>
+                <td class="${statusClass}"><b>${DateHelper.toUI(b.exp)}</b></td>
+                <td>${diff} Hari lagi</td>
+                <td><span class="badge-${diff <= 30 ? 'danger' : 'warning'}">⚠️ ${diff <= 0 ? 'KADALUWARSA' : 'DEKAT EXP'}</span></td>
+            </tr>`;
+        }).join('');
+    },
     syncTrx: (src, t) => {
         if(src === 'k') {
             const k = document.getElementById('t_k').value;
@@ -891,7 +924,33 @@ renderExpiry: () => {
         t.innerText = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2000); 
-    }
+    },
+
+    showExpiredAlert: (count) => {
+        // Cegah duplikasi toast jika sudah ada di layar
+        if (document.querySelector('.toast-expired-alert')) return;
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-expired-alert';
+        toast.innerHTML = `
+            <div style="font-size: 24px;">⚠️</div>
+            <div style="flex:1">
+                <strong style="display:block; font-size:14px; margin-bottom:2px;">PENGINGAT KADALUWARSA</strong>
+                <span style="font-size:12px; opacity:0.9;">Ada ${count} item mendekati expired (Cek Tab Expired untuk detail).</span>
+            </div>
+            <div style="font-size:18px; opacity:0.5;">&times;</div>
+        `;
+
+        toast.onclick = () => {
+            UI.switchTab('expiry'); 
+            toast.remove();
+        };
+
+        document.body.appendChild(toast);
+        
+        // Hilang otomatis setelah 20 detik
+        //setTimeout(() => { if(toast) toast.remove(); }, 20000);
+    },
 };
 
 const App = {
@@ -924,23 +983,72 @@ const App = {
         }
     },
     
+    // Baris sebelum:
     init: async () => {
         UI.initFilterDate(); // Memicu rantai proses di atas
-        await App.syncLoad(); 
+        await App.syncLoad();    
     },
+    // Baris sesudah (fungsi selanjutnya)
     exportDB: () => {
         const b = new Blob([JSON.stringify({ m: DB.get('m'), l: DB.get('l') })], { type: 'application/json' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Backup_${new Date().getTime()}.json`; a.click();
     },
 
+    // Lokasi: script.js -> di dalam const App = { ... }
+
     exportToExcel: () => {
-        const actBtn = document.querySelector('.tab-btn.active'); let tid = "";
-        if(actBtn.innerText.includes("Stok")) tid = "inventoryBody";
-        else if(actBtn.innerText.includes("Mutasi")) tid = "tableMutasi";
-        else if(actBtn.innerText.includes("Log")) tid = "logTableBody";
-        const el = document.getElementById(tid);
-        const wb = XLSX.utils.table_to_book(el.tagName === 'TABLE' ? el : el.closest('table'));
-        XLSX.writeFile(wb, `Laporan_${new Date().getTime()}.xlsx`);
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (!activeTab) return;
+
+        const id = activeTab.id;
+        const ms = DB.get('m') || [];
+        const l = DB.get('l') || [];
+        let wb = XLSX.utils.book_new();
+        let sheetName = "";
+
+        if (id === 'tab-mutasi') {
+            // --- LOGIKA KHUSUS PIVOT MUTASI ---
+            const table = document.getElementById('tableMutasi');
+            if (!table || table.rows.length <= 2) return alert("Data Mutasi Kosong!");
+            
+            sheetName = "Mutasi_Pivot";
+            // Ambil data langsung dari elemen tabel HTML agar akurat dengan yang tampil
+            const ws = XLSX.utils.table_to_sheet(table);
+            
+            // Atur lebar kolom agar tidak berantakan
+            ws['!cols'] = [{wch: 15}, {wch: 30}, {wch: 10}]; // Kode, Nama, Awal
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        } 
+        else {
+            // --- LOGIKA TAB STANDAR (STOK / LOG / DAY) ---
+            let dataExport = [];
+            if (id === 'tab-stok') {
+                sheetName = "Stok_Barang";
+                dataExport = ms.map(m => {
+                    const history = l.filter(x => x.kode === m.kode);
+                    const inQ = history.filter(x => x.tipe === 'IN').reduce((a, b) => a + (parseFloat(b.qty) || 0), 0);
+                    const outQ = history.filter(x => x.tipe === 'OUT').reduce((a, b) => a + (parseFloat(b.qty) || 0), 0);
+                    return { "Kode": m.kode, "Nama": m.nama, "Masuk": inQ, "Keluar": outQ, "Saldo": inQ - outQ };
+                });
+            } else if (id === 'tab-day-in' || id === 'tab-day-out') {
+                const tipe = id === 'tab-day-in' ? 'IN' : 'OUT';
+                sheetName = `Log_${tipe}`;
+                dataExport = l.filter(x => x.tipe === tipe).map(x => ({
+                    "Tgl": x.tgl, "Ref": x.ref, "Kode": x.kode, "Qty": x.qty, "Ket": x.ket
+                }));
+            }
+
+            if (dataExport.length === 0) return alert("Data Kosong!");
+            const ws = XLSX.utils.json_to_sheet(dataExport);
+            
+            // Auto-width standar
+            ws['!cols'] = Object.keys(dataExport[0]).map(k => ({ wch: k.length + 10 }));
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+
+        // DOWNLOAD FILE
+        const fileName = `${sheetName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
     },
 
     openMasterAdd: () => {

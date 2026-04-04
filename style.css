@@ -185,7 +185,26 @@ th.sortable span { font-size: 10px; margin-left: 5px; color: var(--p); }
 .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 14px; animation: fadeInOut 1s ease-in-out; }
 /* Toast Konfirmasi (Peringatan Batch) */
 .toast-confirm { position: fixed; bottom: 25px; right: 25px; background: #1e293b; color: #f1f5f9; padding: 15px; border-radius: 12px; z-index: 11000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; min-width: 300px; animation: slideInToast 0.3s ease-out; }
-
+.toast-expired-alert {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: #7f1d1d;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    border-left: 5px solid #f87171;
+    animation: slideShake 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.toast-expired-alert:hover {
+    background: #991b1b;
+}
 /* Autocomplete */
 .autocomplete-items { position: absolute; border: 1px solid #cbd5e0; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 180px; overflow-y: auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px; display: none; }
 .autocomplete-items div { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #c3c8ce; font-size: 12px; line-height: 1.4; }
@@ -200,6 +219,15 @@ th.sortable span { font-size: 10px; margin-left: 5px; color: var(--p); }
 @keyframes fadeInOut { 0% { opacity: 0; bottom: 10px; } 20% { opacity: 1; bottom: 20px; } 80% { opacity: 1; bottom: 20px; } 100% { opacity: 0; bottom: 10px; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideInToast { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideShake {
+    0% { transform: translateX(120%); }
+    70% { transform: translateX(-20px); }
+    80% { transform: translateX(0); }
+    85% { transform: rotate(2deg); }
+    90% { transform: rotate(-2deg); }
+    95% { transform: rotate(2deg); }
+    100% { transform: rotate(0); }
+}
 
 @media (max-width: 768px) { #modalTrx .modal-content { top: auto; bottom: 0; right: 0; left: 0; width: 100%; border-radius: 15px 15px 0 0; max-height: 85vh; animation: slideInUp 0.3s ease-out; } }
 
